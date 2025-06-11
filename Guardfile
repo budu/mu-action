@@ -17,7 +17,7 @@ guard :rspec, cmd: "bundle exec rspec" do
   # Watch lib files
   watch(%r{^lib/(.+)\.rb$}) { |m| "spec/#{m[1]}_spec.rb" }
   watch(%r{^lib/mu/action/(.+)\.rb$}) { "spec/mu/action_spec.rb" }
-  watch(%r{^lib/mu/action\.rb$}) { "spec/mu/action_spec.rb" }
+  watch(%r{^lib/mu/action\.rb$}) { Dir["spec/*"] }
 end
 
 guard :rubocop, cli: "--format progress" do
