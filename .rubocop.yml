@@ -2,6 +2,15 @@ AllCops:
   NewCops: enable
   TargetRubyVersion: 3.1
 
+Metrics/BlockLength:
+  AllowedMethods:
+    - configure
+    - context
+    - define
+    - describe
+    - guard
+    - shared_examples
+
 Style/StringLiterals:
   EnforcedStyle: double_quotes
 
