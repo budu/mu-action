@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+set -e
+
+echo "🔍 Running code quality checks..."
+echo ""
+
+# Function to print section headers
+print_section() {
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📋 $1"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
+
+# Track overall success
+OVERALL_SUCCESS=true
+
+# Run RuboCop
+print_section "RUBOCOP - Code Style & Linting"
+if bundle exec rubocop; then
+    echo "✅ RuboCop passed"
+else
+    echo "❌ RuboCop failed"
+    OVERALL_SUCCESS=false
+fi
+echo ""
+
+# Run RSpec
+print_section "RSPEC - Tests"
+if bundle exec rspec; then
+    echo "✅ RSpec passed"
+else
+    echo "❌ RSpec failed"
+    OVERALL_SUCCESS=false
+fi
+echo ""
+
+# Run README examples test
+print_section "README EXAMPLES - Documentation Tests"
+if bin/test_readme_examples; then
+    echo "✅ README examples passed"
+else
+    echo "❌ README examples failed"
+    OVERALL_SUCCESS=false
+fi
+echo ""
+
+# Final summary
+print_section "SUMMARY"
+if $OVERALL_SUCCESS; then
+    echo "🎉 All checks passed!"
+    exit 0
+else
+    echo "💥 Some checks failed. Please review the output above."
+    exit 1
+fi

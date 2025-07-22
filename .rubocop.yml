@@ -1,6 +1,8 @@
 AllCops:
   NewCops: enable
   TargetRubyVersion: 3.1
+  Exclude:
+    - readme_examples.rb
 
 Metrics/BlockLength:
   AllowedMethods:

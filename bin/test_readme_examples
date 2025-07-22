@@ -1,0 +1,172 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "bundler/setup"
+require "mu/action"
+require "optparse"
+
+# TestReadmeExamples is an action that extracts Ruby code blocks from a README file and run
+# them.
+# rubocop:disable Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/AbcSize
+class TestReadmeExamples
+  include Mu::Action
+
+  prop :readme_path, String, default: -> { "README.md" }
+  prop :output_file, String, default: -> { "readme_examples.rb" }
+  prop :extract_only, _Boolean, default: -> { false }
+
+  def call
+    File.read(@readme_path) => content
+    extract_ruby_blocks(content) => ruby_blocks
+    return Failure(:no_ruby_blocks) if ruby_blocks.empty?
+
+    combined_code = ruby_blocks.map(&:join).join("\n")
+    write_to_file(combined_code)
+    execute_code(combined_code) unless @extract_only
+
+    Success(
+      action: @extract_only ? :extracted : :tested,
+      blocks_extracted: ruby_blocks.size,
+      output_file: @output_file,
+      lines_written: combined_code.lines.size
+    )
+  end
+
+  private
+
+  def extract_ruby_blocks(content)
+    in_ruby_block = false
+    current_block = []
+
+    content.lines.each_with_object([]) do |line, blocks|
+      stripped_line = line.strip
+      if stripped_line == "```ruby"
+        in_ruby_block = true
+        current_block = []
+      elsif stripped_line == "```" && in_ruby_block
+        in_ruby_block = false
+        filtered_block = current_block.reject { _1.strip.start_with?("gem ") || _1.strip.empty? }
+        blocks << filtered_block if filtered_block.any?
+      elsif in_ruby_block
+        current_block << line
+      end
+    end
+  end
+
+  def assert(condition)
+    raise "Assertion failed" unless condition
+  end
+
+  def write_to_file(code)
+    FileUtils.mkdir_p(File.dirname(@output_file))
+    File.write(@output_file, code)
+  end
+
+  def execute_code(code)
+    setup_mocks
+    eval(code, binding, "README examples") # rubocop:disable Security/Eval
+  end
+
+  def setup_mocks
+    # Mock User class for examples
+    unless defined?(User)
+      Object.const_set("User", Class.new do
+        def self.exists?(email:)
+          email == "existing@example.com"
+        end
+
+        def self.create!(email:, name:, age:)
+          new.tap do |user|
+            user.define_singleton_method(:email) { email }
+            user.define_singleton_method(:name) { name }
+            user.define_singleton_method(:age) { age }
+          end
+        end
+      end)
+    end
+
+    # Mock Rails for examples
+    unless defined?(Rails)
+      Object.const_set("Rails", Class.new do
+        def self.logger
+          @logger ||= Class.new do
+            def info(msg)
+              puts "[INFO] #{msg}"
+            end
+          end.new
+        end
+      end)
+    end
+
+    # Mock ActiveRecord for examples
+    unless defined?(ActiveRecord)
+      Object.const_set("ActiveRecord", Class.new do
+        const_set("Base", Class.new do
+          def self.transaction
+            puts "[TRANSACTION] Starting transaction"
+            result = yield
+            puts "[TRANSACTION] Transaction completed"
+            result
+          end
+        end)
+      end)
+    end
+
+    # Mock ProfileService for examples
+    return if defined?(ProfileService)
+
+    Object.const_set("ProfileService", Class.new do
+      def self.fetch(_user_id)
+        Class.new do
+          def to_h
+            { id: user_id, name: "Profile Name", email: "profile@example.com" }
+          end
+        end.new
+      end
+    end)
+  end
+end
+
+if __FILE__ == $PROGRAM_NAME
+  options = {}
+  OptionParser.new do |opts|
+    opts.banner = "Usage: #{$PROGRAM_NAME} [options]"
+
+    opts.on("--extract-only", "Extract code blocks to file without running them") do
+      options[:extract_only] = true
+    end
+
+    opts.on("-o", "--output FILE", "Output file for extracted code (default: readme_examples.rb)") do |file|
+      options[:output_file] = file
+    end
+
+    opts.on("-r", "--readme FILE", "README file to extract from (default: README.md)") do |file|
+      options[:readme_path] = file
+    end
+
+    opts.on("-h", "--help", "Prints this help") do
+      puts opts
+      exit
+    end
+  end.parse!
+
+  case TestReadmeExamples.call(**options)
+  in Mu::Action::Success(value:)
+    case value[:action]
+    when :extracted
+      puts "✅ Extracted #{value[:blocks_extracted]} Ruby code blocks to #{value[:output_file]}"
+      puts "   Total lines written: #{value[:lines_written]}"
+    when :tested
+      puts "✅ Successfully tested #{value[:blocks_extracted]} Ruby code blocks"
+      puts "   Total lines written: #{value[:lines_written]}"
+    end
+  in Mu::Action::Failure(error:)
+    puts "❌ Failed: #{error[:error] || error}"
+    if error[:backtrace]
+      puts "   Backtrace:"
+      error[:backtrace].each { puts "     #{_1}" }
+    end
+    exit 1
+  end
+end
+# rubocop:enable Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/AbcSize
