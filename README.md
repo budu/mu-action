@@ -124,6 +124,41 @@ result = ProcessPayment.call(amount: 100.0, card_token: "tok_123")
 assert result.value[:payment_id] == "pay_123"
 ```
 
+Hooks can also be registered by method name if you prefer keeping the logic in dedicated instance methods:
+
+```ruby
+class ProcessPayment
+  include Mu::Action
+
+  prop :amount, Float
+  prop :card_token, String
+
+  before :prepare_logging
+  after :finalize_logging
+  around :wrap_in_transaction
+
+  def prepare_logging
+    meta[:started_at] = Time.now
+    Rails.logger.info "Processing payment for $#{@amount}"
+  end
+
+  def finalize_logging
+    meta[:completed_at] = Time.now
+    Rails.logger.info "Payment processing completed"
+  end
+
+  def wrap_in_transaction(chain)
+    ActiveRecord::Base.transaction { chain.call }
+  end
+
+  def call
+    Success(payment_id: "pay_123")
+  end
+end
+```
+
+Around hook methods may also receive no arguments and use `yield`, or accept two arguments `(action, chain)` to mirror the block-based signature.
+
 ### Custom Result Types
 
 Define typed results for better API contracts:

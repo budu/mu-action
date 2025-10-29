@@ -50,6 +50,20 @@ RSpec.describe "Mu::Action hooks" do
       expect(result.meta).to include(original_name: "Bob")
       expect(result.value).to eq("Hello Modified Bob")
     end
+
+    it "supports method-based before hooks" do
+      action_class.class_eval do
+        def record_before
+          meta[:before_method] = true
+        end
+      end
+
+      action_class.before :record_before
+
+      result = action_class.call(name: "Test")
+
+      expect(result.meta).to include(before_method: true)
+    end
   end
 
   describe "after hooks" do
@@ -76,6 +90,20 @@ RSpec.describe "Mu::Action hooks" do
       result = action_class.call(name: "Success")
 
       expect(result.meta).to include(cleanup: "done")
+    end
+
+    it "supports method-based after hooks" do
+      action_class.class_eval do
+        def record_after
+          meta[:after_method] = true
+        end
+      end
+
+      action_class.after :record_after
+
+      result = action_class.call(name: "Test")
+
+      expect(result.meta).to include(after_method: true)
     end
   end
 
@@ -146,6 +174,61 @@ RSpec.describe "Mu::Action hooks" do
 
       expect(normal_result).to eq("Hello normal")
       expect(skipped_result).to eq("Skipped execution")
+    end
+
+    it "supports method-based around hooks receiving the chain" do
+      action_class.class_eval do
+        def wrap_call(chain)
+          meta[:before_chain_method] = true
+          result = chain.call
+          meta[:after_chain_method] = true
+          result
+        end
+      end
+
+      action_class.around :wrap_call
+
+      result = action_class.call(name: "Test")
+
+      expect(result.meta).to include(
+        before_chain_method: true,
+        after_chain_method: true
+      )
+    end
+
+    it "allows method-based around hooks to use a block" do
+      action_class.class_eval do
+        def wrap_with_block
+          meta[:method_block_before] = true
+          result = yield
+          meta[:method_block_after] = true
+          result
+        end
+      end
+
+      action_class.around :wrap_with_block
+
+      result = action_class.call(name: "Test")
+
+      expect(result.meta).to include(
+        method_block_before: true,
+        method_block_after: true
+      )
+    end
+
+    it "supports method-based around hooks receiving the action and chain" do
+      action_class.class_eval do
+        def wrap_with_context(action, chain)
+          meta[:method_chain_with_action] = (self == action)
+          chain.call
+        end
+      end
+
+      action_class.around :wrap_with_context
+
+      result = action_class.call(name: "Test")
+
+      expect(result.meta).to include(method_chain_with_action: true)
     end
   end
 
