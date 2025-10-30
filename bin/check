@@ -34,6 +34,16 @@ else
 fi
 echo ""
 
+# Run Steep
+print_section "STEEP - Type Checking"
+if bundle exec steep check; then
+    echo "✅ Steep passed"
+else
+    echo "❌ Steep failed"
+    OVERALL_SUCCESS=false
+fi
+echo ""
+
 # Run README examples test
 print_section "README EXAMPLES - Documentation Tests"
 if bin/test_readme_examples; then

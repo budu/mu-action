@@ -1,6 +1,116 @@
 module Mu
   module Action
-    VERSION: String
-    # See the writing guide of rbs: https://github.com/ruby/rbs#guides
+    include Kernel
+
+    VERSION: ::String
+    attr_reader meta: ::Hash[untyped, untyped]
+
+    interface _ActionInstance
+      def meta: () -> ::Hash[untyped, untyped]
+      def class: () -> _ActionClass
+      def run: () -> ::Mu::Action::Result
+      def run!: () -> ::Mu::Action::Result
+    end
+
+    interface _ActionClass
+      def literal_properties: () -> ::Array[untyped]
+      def before_hooks: () -> ::Array[untyped]
+      def after_hooks: () -> ::Array[untyped]
+      def around_hooks: () -> ::Array[untyped]
+      def const_get: (Symbol) -> ::Class
+      def instance_method: (Symbol) -> UnboundMethod
+      def new: (*untyped, **untyped) -> _ActionInstance
+    end
+
+    def self.included: (untyped base) -> void
+    def self.before_hooks: () -> ::Array[untyped]
+    def self.after_hooks: () -> ::Array[untyped]
+    def self.around_hooks: () -> ::Array[untyped]
+
+    module MetaPropAdder
+      include Literal::Properties
+
+      def new: (*untyped, **untyped) -> untyped
+      def inherited: (untyped subclass) -> void
+    end
+
+    module HookPropagator
+      def inherited: (untyped subclass) -> void
+      def before_hooks: () -> ::Array[untyped]
+      def after_hooks: () -> ::Array[untyped]
+      def around_hooks: () -> ::Array[untyped]
+    end
+
+    class FailureError < StandardError
+      attr_reader error: untyped
+      attr_reader meta: ::Hash[untyped, untyped]
+
+      def initialize: (untyped error, ?meta: ::Hash[untyped, untyped]) -> void
+    end
+
+    class Result < Literal::Struct
+      attr_reader meta: ::Hash[untyped, untyped]
+
+      def initialize: (*untyped, **untyped) -> void
+    end
+
+    class Success < Result
+      attr_reader value: untyped
+
+      def initialize: (*untyped, **untyped) -> void
+      def success?: () -> true
+      def failure?: () -> false
+    end
+
+    class Failure < Result
+      attr_reader error: untyped
+
+      def initialize: (*untyped, **untyped) -> void
+      def success?: () -> false
+      def failure?: () -> true
+    end
+
+    module Initializer
+      def initialize: (*untyped, **untyped) -> void
+      def initialize_meta: () -> void
+      def meta: () -> ::Hash[untyped, untyped]
+      def self.literal_properties: () -> ::Array[untyped]
+    end
+
+    module ClassMethods
+      include Literal::Properties
+
+      def around: (*Symbol) ?{ (*untyped) -> untyped } -> ::Array[untyped]
+      def before: (*Symbol) ?{ (*untyped) -> untyped } -> ::Array[untyped]
+      def after: (*Symbol) ?{ (*untyped) -> untyped } -> ::Array[untyped]
+      def around_hooks: () -> ::Array[untyped]
+      def before_hooks: () -> ::Array[untyped]
+      def after_hooks: () -> ::Array[untyped]
+      def call: (*untyped, **untyped) -> untyped
+      def call!: (*untyped, **untyped) -> untyped
+      def result: (untyped type) -> ::Class
+      def register_hook: (untyped collection, untyped method_names, ::Proc? block, name: Symbol) -> untyped
+      def normalize_hook_inputs: (untyped method_names, ::Proc? block, name: Symbol) -> untyped
+      def ensure_valid_hook_inputs: (untyped method_names, ::Proc? block, name: Symbol) -> void
+      def symbolize_hook_names: (untyped method_names, name: Symbol) -> ::Array[Symbol]
+      def const_set: (Symbol, ::Class) -> ::Class
+      def new: (*untyped, **untyped) -> _ActionInstance
+    end
+
+    def Success: (untyped value) -> Success
+    def Failure: (untyped error, **untyped) -> bot
+    def run: () -> Result
+    def run!: () -> Result
+    def result_class: () -> ::Class
+    def with_hooks: () { () -> Result } -> Result
+    def run_before_hooks: () -> ::Array[untyped]
+    def run_after_hooks: () -> ::Array[untyped]
+    def build_around_chain: () { () -> Result } -> ::Proc
+    def execute_simple_hook: (::Proc | ::Symbol) -> untyped
+    def build_around_wrapper: ((::Proc | ::Symbol), ::Proc) -> ::Proc
+    def invoke_around_method: (::Symbol, ::Proc) -> untyped
+    def around_arguments: (UnboundMethod, ::Proc) -> ::Array[untyped]
+    def resolve_method: (Symbol) -> UnboundMethod
+    def call: () -> untyped
   end
 end

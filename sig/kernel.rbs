@@ -1,0 +1,3 @@
+module Kernel
+  def instance_exec: (*untyped) { (*untyped) -> untyped } -> untyped
+end

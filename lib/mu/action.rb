@@ -24,7 +24,7 @@ module Mu
     module MetaPropAdder
       def new(...)
         unless @meta_prop_added
-          prop :meta, Hash, default: -> { {} }
+          prop :meta, Hash, default: -> { {} } # steep:ignore UnannotatedEmptyCollection
           @meta_prop_added = true
         end
         instance = super
@@ -65,7 +65,7 @@ module Mu
     # Base result class that wraps action outcomes with success/failure state
     # and metadata. Extended by Success and Failure classes for pattern matching.
     class Result < Literal::Struct
-      prop :meta, Hash, default: -> { {} }
+      prop :meta, Hash, default: -> { {} } # steep:ignore UnannotatedEmptyCollection
 
       attr_reader :meta
     end
@@ -218,7 +218,10 @@ module Mu
     end
 
     def execute_simple_hook(hook)
-      return instance_exec(&hook) if hook.is_a?(Proc)
+      if hook.is_a?(Proc)
+        # @type var hook: ^(*untyped) -> untyped
+        return instance_exec(&hook)
+      end
 
       send(hook)
     end
@@ -226,7 +229,10 @@ module Mu
     def build_around_wrapper(hook, previous)
       case hook
       when Proc
-        -> { instance_exec(self, previous, &hook) }
+        lambda do
+          # @type var hook: ^(*untyped) -> untyped
+          instance_exec(self, previous, &hook)
+        end
       else
         -> { invoke_around_method(hook, previous) }
       end

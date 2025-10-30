@@ -1,0 +1,13 @@
+module Literal
+  module Properties
+    def prop: (Symbol, untyped, *untyped, ?default: untyped) -> untyped
+    def _Any: () -> untyped
+  end
+
+  class Struct
+    extend Properties
+
+    def self.prop: (Symbol, untyped, *untyped, ?default: untyped) -> untyped
+    def self.literal_properties: () -> ::Array[untyped]
+  end
+end
