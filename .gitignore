@@ -10,3 +10,5 @@
 .aider*
 .*.session
 .rspec_status
+readme_examples.rb
+*.gem
