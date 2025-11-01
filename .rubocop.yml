@@ -14,6 +14,9 @@ Metrics/BlockLength:
     - guard
     - shared_examples
 
+Style/HashSyntax:
+  EnforcedShorthandSyntax: always
+
 Style/StringLiterals:
   EnforcedStyle: double_quotes
 
