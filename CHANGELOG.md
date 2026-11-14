@@ -23,6 +23,7 @@
 
 ### Removed
 - The unused protected `result_class` method.
+- Development files from the packaged gem, which now only contains `lib/mu/`, `sig/mu/` and the docs. `lib/guard/steep.rb` and the local RBS stubs for Kernel and Literal were shipped by mistake.
 
 ### Fixed
 - A `meta:` hash passed by a caller is no longer modified.
