@@ -1,14 +1,8 @@
 module Mu
-  module Action : Object, Hooks, Failures
+  module Action : Object, Context, Metadata, Hooks, Failures
     VERSION: ::String
 
-    CONTEXT_KEY: Symbol
-
-    type props_recording = bool | ::Hash[Symbol, ::Array[Symbol]]
-
     extend Configuration
-    attr_reader meta: ::Hash[untyped, untyped]
-    attr_reader context: untyped
 
     interface _ActionInstance
       def meta: () -> ::Hash[untyped, untyped]
@@ -34,35 +28,12 @@ module Mu
 
     def self.included: (untyped base) -> void
 
-    module MetaPropAdder
-      include Literal::Properties
-
-      def new: (*untyped, **untyped) -> untyped
-      def inherited: (untyped subclass) -> void
-    end
-
-    module HookPropagator
-      def inherited: (untyped subclass) -> void
-      def props_recording: () -> props_recording
-    end
-
-    module Initializer : _ActionInstance
-      @meta: ::Hash[untyped, untyped]
-
-      def initialize: (*untyped, **untyped) -> void
-      def initialize_meta: () -> void
-      def recorded_props: () -> ::Hash[Symbol, untyped]?
-    end
-
     module ClassMethods
       include Literal::Properties
 
       def call: (*untyped, **untyped) -> untyped
       def call!: (*untyped, **untyped) -> untyped
       def result: (untyped type) -> ::Class
-      def record_props: (?bool enabled, ?only: (Symbol | ::Array[Symbol])?, ?except: (Symbol | ::Array[Symbol])?) -> props_recording
-      def props_recording: () -> props_recording
-      def build_props_recording: (bool enabled, (Symbol | ::Array[Symbol])? only, (Symbol | ::Array[Symbol])? except) -> props_recording
       def const_set: (Symbol, ::Class) -> ::Class
       def new: (*untyped, **untyped) -> _ActionInstance
     end
@@ -71,7 +42,6 @@ module Mu
     def Failure: (untyped error, **untyped) -> bot
     def run: () -> Result
     def run!: () -> Result
-    def with_context: [T] () { () -> T } -> T
     def call: () -> untyped
   end
 end

@@ -29,8 +29,10 @@ RSpec.describe Mu::Action do
       expect(action_class.singleton_class.included_modules).to include(Mu::Action::ClassMethods)
     end
 
-    it "includes Initializer module" do
-      expect(action_class.included_modules).to include(Mu::Action::Initializer)
+    it "includes the feature modules" do
+      expect(action_class.included_modules).to include(
+        Mu::Action::Context, Mu::Action::Metadata, Mu::Action::Hooks, Mu::Action::Failures
+      )
     end
   end
 
