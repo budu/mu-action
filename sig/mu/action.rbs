@@ -6,15 +6,7 @@ module Mu
 
     CONTEXT_KEY: Symbol
 
-    type failure_handler = :raise | ^(untyped action, untyped error, ::Hash[Symbol, untyped] details) -> untyped
     type props_recording = bool | ::Hash[Symbol, ::Array[Symbol]]
-
-    module Configuration : Kernel
-      @on_undeclared_failure: failure_handler
-
-      def on_undeclared_failure: () -> failure_handler
-      def on_undeclared_failure=: (failure_handler handler) -> failure_handler
-    end
 
     extend Configuration
     attr_reader meta: ::Hash[untyped, untyped]
@@ -62,37 +54,6 @@ module Mu
       def own_failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
       def failure_sources: () -> ::Array[_ActionClass]
       def props_recording: () -> props_recording
-    end
-
-    class FailureError < StandardError
-      attr_reader error: untyped
-      attr_reader details: ::Hash[Symbol, untyped]
-      attr_reader failure: Failure?
-
-      def initialize: (untyped error, ?details: ::Hash[Symbol, untyped], ?failure: Failure?) -> void
-    end
-
-    class Result < Literal::Struct
-      attr_reader meta: ::Hash[untyped, untyped]
-
-      def initialize: (*untyped, **untyped) -> void
-    end
-
-    class Success < Result
-      attr_reader value: untyped
-
-      def initialize: (*untyped, **untyped) -> void
-      def success?: () -> true
-      def failure?: () -> false
-    end
-
-    class Failure < Result
-      attr_reader error: untyped
-      attr_reader details: ::Hash[Symbol, untyped]
-
-      def initialize: (*untyped, **untyped) -> void
-      def success?: () -> false
-      def failure?: () -> true
     end
 
     module Initializer : _ActionInstance

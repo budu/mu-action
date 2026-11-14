@@ -1,28 +1,16 @@
 # frozen_string_literal: true
 
-require_relative "action/version"
 require "literal"
+
+require_relative "action/version"
+require_relative "action/configuration"
+require_relative "action/failure_error"
+require_relative "action/result"
 
 module Mu
   # Provides an interactor pattern implementation with hooks, metadata tracking,
   # and result wrapping.
   module Action
-    # Global settings, available as Mu::Action.on_undeclared_failure and so on.
-    module Configuration
-      # How an action handles a failure that its declarations don't allow:
-      # +:raise+ (the default) raises an ArgumentError, while a callable is
-      # called with the action, the error code and the details.
-      attr_reader :on_undeclared_failure
-
-      def on_undeclared_failure=(handler)
-        unless handler == :raise || handler.respond_to?(:call)
-          raise ArgumentError, "on_undeclared_failure must be :raise or respond to #call"
-        end
-
-        @on_undeclared_failure = handler
-      end
-    end
-
     extend Configuration
 
     self.on_undeclared_failure = :raise
@@ -79,48 +67,6 @@ module Mu
         subclass.instance_variable_set(:@failure_sources, failure_sources.dup)
         subclass.instance_variable_set(:@props_recording, props_recording)
       end
-    end
-
-    # Exception class for action failures. Carries the error code and its
-    # details. When raised by +call!+, it also carries the Failure result.
-    class FailureError < StandardError
-      attr_reader :error, :details, :failure
-
-      def initialize(error, details: {}, failure: nil)
-        @error = error
-        @details = details
-        @failure = failure
-        super(error)
-      end
-    end
-
-    # Base result class that wraps action outcomes with success/failure state
-    # and metadata. Extended by Success and Failure classes for pattern matching.
-    class Result < Literal::Struct
-      prop :meta, Hash, default: -> { {} } # steep:ignore UnannotatedEmptyCollection
-
-      attr_reader :meta
-    end
-
-    # Success result class for pattern matching
-    class Success < Result
-      prop :value, _Nilable(_Any), :positional
-
-      attr_reader :value
-
-      def success? = true
-      def failure? = false
-    end
-
-    # Failure result class for pattern matching
-    class Failure < Result
-      prop :error, _Any, :positional
-      prop :details, Hash, default: -> { {} } # steep:ignore UnannotatedEmptyCollection
-
-      attr_reader :error, :details
-
-      def success? = false
-      def failure? = true
     end
 
     # Internal module that handles action initialization, automatically

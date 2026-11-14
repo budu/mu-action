@@ -1,0 +1,26 @@
+module Mu
+  module Action
+    class Result < Literal::Struct
+      attr_reader meta: ::Hash[untyped, untyped]
+
+      def initialize: (*untyped, **untyped) -> void
+    end
+
+    class Success < Result
+      attr_reader value: untyped
+
+      def initialize: (*untyped, **untyped) -> void
+      def success?: () -> true
+      def failure?: () -> false
+    end
+
+    class Failure < Result
+      attr_reader error: untyped
+      attr_reader details: ::Hash[Symbol, untyped]
+
+      def initialize: (*untyped, **untyped) -> void
+      def success?: () -> false
+      def failure?: () -> true
+    end
+  end
+end

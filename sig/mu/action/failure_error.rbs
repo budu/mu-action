@@ -1,0 +1,11 @@
+module Mu
+  module Action
+    class FailureError < StandardError
+      attr_reader error: untyped
+      attr_reader details: ::Hash[Symbol, untyped]
+      attr_reader failure: Failure?
+
+      def initialize: (untyped error, ?details: ::Hash[Symbol, untyped], ?failure: Failure?) -> void
+    end
+  end
+end
