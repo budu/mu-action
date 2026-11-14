@@ -11,7 +11,6 @@ The README documents the public API.
 | Path                 | Purpose                                                              |
 |----------------------|----------------------------------------------------------------------|
 | `lib/mu/action.rb`   | The library                                                          |
-| `lib/guard/`         | A Guard plugin for Steep, used in development only                   |
 | `sig/mu/`            | RBS signatures shipped with the gem                                  |
 | `sig/*.rbs`          | Local stubs for Steep (Kernel, Literal), not shipped                 |
 | `spec/`              | RSpec examples, mirroring `lib/`                                     |
