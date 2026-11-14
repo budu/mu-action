@@ -58,6 +58,8 @@ A change is complete when:
 
 - **Branches**: all development happens on a branch and reaches `main` through a pull
   request. Never commit new development on `main`.
+- **Merges**: pull requests are squash-merged, except when their commits are
+  meaningful on their own; those keep a merge commit.
 - **Commits**: Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`,
   `chore:`), with `!` and a `BREAKING CHANGE:` footer for breaking changes.
 - **Compatibility**: the gem is 0.x, but applications depend on it. Treat every
