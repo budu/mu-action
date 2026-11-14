@@ -33,9 +33,9 @@ Use `git-commit`. The branch must include the `CHANGELOG.md` entry under
 
 ## 4. Verify
 
-`bin/check` must pass before pushing. For changes to the library, the gemspec, or the
-lockfile, run it on every Ruby version in `.github/workflows/main.yml` when those
-versions are installed locally; say which ones were not run.
+`bin/ci` must pass before pushing. It runs the checks on every Ruby line of the CI
+matrix and reports the lines that are not installed locally (exit code 3); say which
+ones were not run.
 
 ## 5. Push and Open the Pull Request
 
@@ -49,7 +49,7 @@ gh pr create --base main --title "<conventional commit style title>" --body "$(c
 - what callers must change, or "None"
 
 ## Test plan
-- [x] `bin/check` on Ruby X.Y
+- [x] `bin/ci` (Ruby 3.2, 3.3, 3.4, 4.0)
 EOF
 )"
 ```

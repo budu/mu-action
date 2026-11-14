@@ -21,7 +21,7 @@ user_invocable: true
    `git add -p -- <file>` when a file holds several concerns.
 6. **Audit** the complete `git diff --cached` and confirm the planned subject describes
    it honestly.
-7. **Verify**: run `bin/check`. If it changes files, restage only the task-owned hunks
+7. **Verify**: run `bin/ci --current`. If it changes files, restage only the task-owned hunks
    and audit again.
 8. **Commit** with a HEREDOC message, report the hash, and stop.
 

@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+#
+# Runs every check (RuboCop, RSpec, Steep, README examples) on each supported Ruby.
+#
+# Usage:
+#   bin/ci              every Ruby line of the CI matrix
+#   bin/ci 3.2 4.0      only these Ruby lines, or exact versions such as 3.3.7
+#   bin/ci --current    only the Ruby that is currently active
+#   bin/ci --verbose    also show the output of the checks that pass
+#
+# The Ruby lines come from the matrix in .github/workflows/main.yml. Each one runs on
+# the newest matching version installed with asdf; a line with no installed version is
+# reported and makes the run incomplete. Missing gems are installed from the lockfile,
+# which is never modified.
+set -uo pipefail
+
+cd "$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)" || exit 1
+
+WORKFLOW=.github/workflows/main.yml
+CHECKS=(
+  "RuboCop|bundle exec rubocop"
+  "RSpec|bundle exec rspec"
+  "Steep|bundle exec steep check"
+  "README examples|bin/test_readme_examples"
+)
+
+CURRENT=false
+VERBOSE=false
+LINES=()
+for arg in "$@"; do
+  case "$arg" in
+    --current) CURRENT=true ;;
+    --verbose) VERBOSE=true ;;
+    -h | --help)
+      sed -n '3,9p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+      exit 0
+      ;;
+    -*)
+      echo "Unknown option: ${arg}" >&2
+      exit 2
+      ;;
+    *) LINES+=("$arg") ;;
+  esac
+done
+
+if $CURRENT && [[ ${#LINES[@]} -gt 0 ]]; then
+  echo "--current cannot be combined with Ruby versions" >&2
+  exit 2
+fi
+
+RULE="━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+SUMMARY=()
+FAILED=false
+INCOMPLETE=false
+LOG=$(mktemp)
+trap 'rm -f "$LOG"' EXIT
+
+section() {
+  echo "$RULE"
+  echo "📋 $1"
+  echo "$RULE"
+}
+
+# Ruby lines of the CI matrix, such as 3.2 3.3 3.4 4.0.
+matrix_lines() {
+  ruby -ryaml -e 'puts YAML.load_file(ARGV[0]).dig("jobs", "build", "strategy", "matrix", "ruby")' "$WORKFLOW"
+}
+
+# Newest installed version of a Ruby line: 3.2 -> 3.2.3.
+installed_version() {
+  asdf list ruby 2> /dev/null | tr -d ' *' | grep -E "^${1//./\\.}(\.[0-9]+)*$" | sort -V | tail -n 1
+}
+
+# Runs one check of a Ruby version. Its output is shown when it fails, or always with
+# --verbose. Ruby warnings printed by a check that passes are always shown.
+run_check() {
+  local ruby=$1 name=$2
+  shift 2
+
+  if $VERBOSE; then
+    section "Ruby ${ruby} - ${name}"
+    if "$@"; then
+      echo "✅ ${name} passed"
+      echo ""
+      return 0
+    fi
+    echo "❌ ${name} failed"
+    echo ""
+    return 1
+  fi
+
+  if "$@" > "$LOG" 2>&1; then
+    if grep -q "warning:" "$LOG"; then
+      echo "  ⚠️  ${name} passed with warnings:"
+      grep "warning:" "$LOG" | sort -u | sed 's/^/       /'
+    else
+      echo "  ✅ ${name}"
+    fi
+    return 0
+  fi
+  echo "  ❌ ${name}"
+  section "Ruby ${ruby} - ${name} output"
+  cat "$LOG"
+  echo "$RULE"
+  return 1
+}
+
+# Runs every check on one Ruby. The remaining arguments are the command prefix that
+# selects that Ruby.
+run_ruby() {
+  local ruby=$1
+  shift
+  local failures=()
+  local check name command
+
+  $VERBOSE || echo "Ruby ${ruby}"
+
+  if ! "$@" bundle check > /dev/null 2>&1; then
+    run_check "$ruby" "Bundle install" "$@" env BUNDLE_FROZEN=true bundle install || failures+=("Bundle install")
+  fi
+
+  if [[ ${#failures[@]} -eq 0 ]]; then
+    for check in "${CHECKS[@]}"; do
+      name=${check%%|*}
+      command=${check#*|}
+      # shellcheck disable=SC2086
+      run_check "$ruby" "$name" "$@" $command || failures+=("$name")
+    done
+  fi
+
+  if [[ ${#failures[@]} -eq 0 ]]; then
+    SUMMARY+=("✅ Ruby ${ruby}")
+  else
+    FAILED=true
+    SUMMARY+=("❌ Ruby ${ruby}: $(IFS=,; echo "${failures[*]}" | sed 's/,/, /g') failed")
+  fi
+  $VERBOSE || echo ""
+}
+
+if $CURRENT; then
+  run_ruby "$(ruby -e 'print RUBY_VERSION')" env
+else
+  if ! command -v asdf > /dev/null; then
+    echo "asdf is required to switch Ruby versions; use bin/ci --current instead" >&2
+    exit 2
+  fi
+  if [[ ${#LINES[@]} -eq 0 ]]; then
+    mapfile -t LINES < <(matrix_lines)
+  fi
+  if [[ ${#LINES[@]} -eq 0 ]]; then
+    echo "No Ruby versions found in ${WORKFLOW}" >&2
+    exit 2
+  fi
+
+  for line in "${LINES[@]}"; do
+    version=$(installed_version "$line")
+    if [[ -z "$version" ]]; then
+      INCOMPLETE=true
+      SUMMARY+=("⚠️  Ruby ${line}: not run, no version installed with asdf")
+      continue
+    fi
+    run_ruby "$version" env "ASDF_RUBY_VERSION=${version}"
+  done
+fi
+
+section "SUMMARY"
+printf '%s\n' "${SUMMARY[@]}"
+echo ""
+if $FAILED; then
+  echo "💥 Some checks failed. Please review the output above."
+  exit 1
+fi
+if $INCOMPLETE; then
+  echo "⚠️  The checks passed, but not on every supported Ruby."
+  exit 3
+fi
+echo "🎉 All checks passed!"

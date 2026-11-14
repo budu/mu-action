@@ -343,17 +343,23 @@ You can also run `bin/console` for an interactive prompt to experiment with the 
 
 To install this gem onto your local machine, run `bundle exec rake install`.
 
-### Running Tests and Linting
+### Running the Checks
+
+`bin/ci` runs RuboCop, RSpec, Steep and the README examples. It runs them on every supported Ruby version, switching between them with [asdf](https://asdf-vm.com), and installs missing gems from the lockfile.
 
 ```bash
-# Run all tests
+# Run every check on each supported Ruby version
+bin/ci
+
+# Run every check on some Ruby versions only
+bin/ci 3.2 4.0
+
+# Run every check on the current Ruby only (no asdf needed)
+bin/ci --current
+
+# Run the tests or the linter alone
 bundle exec rspec
-
-# Run linting
 bundle exec rubocop
-
-# Run both tests and linting
-bundle exec rake
 ```
 
 ## Contributing
@@ -365,11 +371,10 @@ When contributing:
 1. Fork the repository
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Write tests for your changes
-4. Ensure all tests pass (`bundle exec rspec`)
-5. Ensure code follows style guidelines (`bundle exec rubocop`)
-6. Commit your changes (`git commit -am 'Add some feature'`)
-7. Push to the branch (`git push origin my-new-feature`)
-8. Create a new Pull Request
+4. Ensure all checks pass (`bin/ci`)
+5. Commit your changes (`git commit -am 'Add some feature'`)
+6. Push to the branch (`git push origin my-new-feature`)
+7. Create a new Pull Request
 
 This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/budu/mu-action/blob/main/CODE_OF_CONDUCT.md).
 
