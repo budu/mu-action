@@ -14,7 +14,7 @@
 - `bin/test_readme_examples --extract-only` regenerates `readme_examples.rb` after documentation updates.
 
 ## Coding Style & Naming Conventions
-- Target Ruby 3.1 with two-space indentation and trailing commas only when required.
+- Target Ruby 3.2 with two-space indentation and trailing commas only when required.
 - RuboCop enforces double-quoted strings and general style—prefer fixes via `bundle exec rubocop -A` over manual edits.
 - Match class and module names to their file paths (e.g., `Mu::Action::Result` lives in `lib/mu/action/result.rb`), and keep method names snake_case verbs.
 - Favor small, composable interactors with explicit `prop` declarations and `Success`/`Failure` returns to stay idiomatic.

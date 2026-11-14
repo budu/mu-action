@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+### Changed
+- Minimum Ruby version raised to 3.2 (3.1 is end-of-life).
+- CI now tests Ruby 3.2, 3.3, 3.4 and 4.0.
+- Development lockfile updated to Literal 1.9.0 and minitest 6.1.0 (needed for Ruby 4.0).
+
+### Removed
+- The unused protected `result_class` method.
+
+### Fixed
+- `bin/test_readme_examples` now requires `fileutils`, which is no longer loaded indirectly on Ruby 3.4+.
+
 ## [0.2.0] - 2025-10-30
 
 ### Added
