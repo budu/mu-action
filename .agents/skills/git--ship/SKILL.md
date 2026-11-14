@@ -65,15 +65,23 @@ Opening the pull request does not merge it.
 
 ## 6. Merge
 
-Merge only when the user asks, and only with CI green:
+Merge only when the user asks, and only with CI green. Squash by default:
 
 ```bash
-gh pr merge <number> --rebase --delete-branch
-git switch main && git pull --ff-only
+gh pr merge <number> --squash --delete-branch
+git switch main && git pull --ff-only && git fetch --prune
 ```
 
-A rebase merge keeps `main` linear and preserves each Conventional Commit, which the
-changelog review relies on.
+The pull request title becomes the subject of the squashed commit, so it must be a
+valid Conventional Commit subject. When the pull request has several commits, GitHub
+fills the body with their subjects: pass `--body` with what changed and why instead,
+ending with the attribution trailer.
+
+Keep a merge commit (`--merge` in place of `--squash`) when the pull request's commits
+are meaningful on their own and worth keeping in the history, such as a refactoring
+made of reviewable steps or a dependency update with one commit per group. A branch
+with fix-up commits or work in progress is always squashed. When it isn't clear which
+applies, say which one you would use and why, and let the user choose.
 
 ## Rules
 
