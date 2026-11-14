@@ -10,8 +10,9 @@ The README documents the public API.
 
 | Path                 | Purpose                                                              |
 |----------------------|----------------------------------------------------------------------|
-| `lib/mu/action.rb`   | The library                                                          |
-| `sig/mu/`            | RBS signatures shipped with the gem                                  |
+| `lib/mu/action.rb`   | Entry point: wiring, `call`, `call!`, `run`, `Success`, `Failure`, `result` |
+| `lib/mu/action/`     | One file per feature: `hooks`, `failures`, `metadata`, `context`, `result`, `failure_error`, `configuration` |
+| `sig/mu/`            | RBS signatures shipped with the gem, one file per library file       |
 | `sig/*.rbs`          | Local stubs for Steep (Kernel, Literal), not shipped                 |
 | `spec/`              | RSpec examples, mirroring `lib/`                                     |
 | `bin/`               | Contributor tooling: `ci`, `console`, `setup`, `test_readme_examples`    |
@@ -45,7 +46,7 @@ A change is complete when:
 
 - `bin/ci` passes on every supported Ruby version;
 - the specs cover the new behavior, including the failure branch and subclasses;
-- `sig/mu/action.rbs` matches the code;
+- the RBS file under `sig/mu/` matches each library file that changed;
 - the README documents any public API change, with an example that runs;
 - `CHANGELOG.md` has an entry under `## [Unreleased]`.
 
@@ -54,6 +55,12 @@ A change is complete when:
 - RuboCop decides formatting: double-quoted strings, hash shorthand syntax.
 - Write for the minimum Ruby version of the gemspec.
 - File paths match constant names: `Mu::Action::Foo` lives in `lib/mu/action/foo.rb`.
+  The exception is `result.rb`, which holds `Result`, `Success` and `Failure`.
+- A feature is one module in one file. Its class methods are in a nested
+  `ClassMethods` module that it extends onto the action class. What it must do when
+  a class is subclassed or instantiated is in a nested `Inheritance` or `Lifecycle`
+  module that it prepends onto the singleton class, so that it runs even when an
+  action class defines `inherited` or `new` without calling `super`.
 - Specs describe observable behavior and build their action classes inline with
   `Class.new { include Mu::Action }`.
 
