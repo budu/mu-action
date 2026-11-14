@@ -29,7 +29,7 @@ On `chore/release-X.Y.Z`:
    `## [X.Y.Z] - YYYY-MM-DD` below it.
 2. Set `VERSION` in `lib/mu/action/version.rb`.
 3. Run `bundle install` under the minimum Ruby to refresh `Gemfile.lock`.
-4. Run `bin/check` on every Ruby version of the CI matrix that is installed.
+4. Run `bin/ci`.
 5. Commit the three files as `chore(release): X.Y.Z`.
 
 Ship the branch with `git-ship` and merge it once the user asks. The steps below run

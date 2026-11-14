@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Changed
+- `bin/check` is renamed `bin/ci`. It runs the checks on every supported Ruby version, using asdf, and `bin/ci --current` runs them on the current Ruby only.
 - Development now follows agent skills in `.agents/skills` (commits, pull requests, changelog, dependencies, releases, reviews), and `AGENTS.md` is the single guide; `CLAUDE.md` points to it.
 
 ## [0.3.0] - 2026-11-14

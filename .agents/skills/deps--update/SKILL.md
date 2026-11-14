@@ -11,7 +11,7 @@ development tooling, but the lockfile must still install on every supported Ruby
 
 ## Baseline
 
-Start from a clean tree on a `chore/update-dependencies` branch with `bin/check`
+Start from a clean tree on a `chore/update-dependencies` branch with `bin/ci`
 passing. If it fails, stop and report: don't update on top of failures.
 
 ## Resolve Under the Minimum Ruby
@@ -63,15 +63,10 @@ Stop and report anything suspicious. Never commit a gem you can't explain.
 
 ## Verify
 
-After each group, run `bin/check` on every Ruby version in
-`.github/workflows/main.yml`:
-
-```bash
-ASDF_RUBY_VERSION=<version> BUNDLE_FROZEN=true bundle install
-ASDF_RUBY_VERSION=<version> bin/check
-```
-
-`BUNDLE_FROZEN=true` proves the committed lockfile installs as is. Watch for:
+After each group, run `bin/ci`. On every Ruby line of the CI matrix, it installs the
+gems from the lockfile without modifying it, which proves the lockfile installs as
+is, then runs the checks. Ruby warnings printed by a check that passes are listed
+under it. Watch for:
 
 - a gem whose prebuilt platform build excludes the newest Ruby;
 - deprecation warnings on the newest Ruby (for example a default gem leaving the

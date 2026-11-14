@@ -15,7 +15,7 @@ The README documents the public API.
 | `sig/mu/`            | RBS signatures shipped with the gem                                  |
 | `sig/*.rbs`          | Local stubs for Steep (Kernel, Literal), not shipped                 |
 | `spec/`              | RSpec examples, mirroring `lib/`                                     |
-| `bin/`               | Contributor tooling: `check`, `console`, `setup`, `test_readme_examples` |
+| `bin/`               | Contributor tooling: `ci`, `console`, `setup`, `test_readme_examples`    |
 | `.agents/skills/`    | Agent skills; `.claude/skills` is a symlink to it                    |
 
 The gemspec selects the released files with an allowlist: `lib/mu/`, `sig/mu/`,
@@ -23,24 +23,28 @@ The gemspec selects the released files with an allowlist: `lib/mu/`, `sig/mu/`,
 
 ## Commands
 
-- **All checks**: `bin/check` (RuboCop, RSpec, Steep, README examples). `rake` runs
-  the same thing.
+- **All checks**: `bin/ci` runs RuboCop, RSpec, Steep and the README examples on
+  every Ruby line of the CI matrix, using the newest version of each installed with
+  asdf. It exits with 1 when a check fails and 3 when a line is not installed.
+- **Some Ruby versions**: `bin/ci 3.2 4.0`
+- **Current Ruby only**: `bin/ci --current`, or `rake`. Use it while iterating.
+- **Full output**: add `--verbose`. By default a check prints its output only when it
+  fails, plus any Ruby warnings when it passes.
 - **One spec file**: `bundle exec rspec spec/mu/action/hooks_spec.rb`
 - **Lint**: `bundle exec rubocop -A`
 - **Type check**: `bundle exec steep check`
 - **README examples**: `bin/test_readme_examples` runs every Ruby block of the README;
   `readme_examples.rb` is its generated output and is not committed.
-- **Another Ruby version**: `ASDF_RUBY_VERSION=3.2.3 bin/check`
 
-CI (`.github/workflows/main.yml`) runs `rake` on every supported Ruby version, from
-the minimum in the gemspec to the newest.
+CI (`.github/workflows/main.yml`) runs `bin/ci --current --verbose` on every supported
+Ruby version, from the minimum in the gemspec to the newest. Its matrix is the list
+of versions `bin/ci` reads.
 
 ## Quality Checklist
 
 A change is complete when:
 
-- `bin/check` passes, on every supported Ruby version for changes to the library,
-  the gemspec, or the lockfile;
+- `bin/ci` passes on every supported Ruby version;
 - the specs cover the new behavior, including the failure branch and subclasses;
 - `sig/mu/action.rbs` matches the code;
 - the README documents any public API change, with an example that runs;

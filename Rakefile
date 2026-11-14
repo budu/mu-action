@@ -9,9 +9,9 @@ require "rubocop/rake_task"
 
 RuboCop::RakeTask.new
 
-desc "Run all checks (RuboCop, RSpec, Steep, README examples)"
-task default: :check
-
-task :check do
-  exec "bin/check"
+desc "Run all checks (RuboCop, RSpec, Steep, README examples) on the current Ruby"
+task :ci do
+  exec "bin/ci", "--current"
 end
+
+task default: :ci
