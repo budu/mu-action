@@ -97,6 +97,7 @@ RSpec.describe "Mu::Action metadata and property tracking" do
     it "includes metadata in failed results" do
       failing_action = Class.new do
         include Mu::Action
+
         prop :value, String
 
         def call = Failure("failed")
@@ -215,6 +216,7 @@ RSpec.describe "Mu::Action metadata and property tracking" do
     it "resets meta_prop_added flag for subclasses" do
       parent_class = Class.new do
         include Mu::Action
+
         prop :parent_prop, String
       end
 

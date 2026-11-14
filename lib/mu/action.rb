@@ -146,7 +146,7 @@ module Mu
         return if recording == false
 
         props = self.class.literal_properties.to_h do |prop|
-          [prop.name, instance_variable_get(:"@#{prop.name}")]
+          [prop.name, instance_variable_get(:"@#{prop.name}")] #: [Symbol, untyped]
         end.except(:meta, :context)
 
         case recording
@@ -269,6 +269,7 @@ module Mu
 
       def result(type)
         success_class = Class.new(::Mu::Action::Success) do
+          # @type self: singleton(::Mu::Action::Success)
           prop :value, type, :positional
         end
 
@@ -281,7 +282,7 @@ module Mu
         raise ArgumentError, "record_props accepts only: or except:, not both" if only && except
 
         # @type var filter: ::Hash[Symbol, ::Array[Symbol]]
-        filter = { only:, except: }.compact.transform_values { Array(_1) } # steep:ignore
+        filter = { only:, except: }.compact.transform_values { Array(_1) }
         return filter.empty? || filter if enabled
         raise ArgumentError, "record_props false accepts no only: or except:" if filter.any?
 

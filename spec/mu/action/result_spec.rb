@@ -29,6 +29,7 @@ RSpec.describe Mu::Action::Result do
     let(:action_class) do
       Class.new do
         include Mu::Action
+
         prop :value, _Any, default: "typed result"
         result String
 
@@ -54,6 +55,7 @@ RSpec.describe Mu::Action::Result do
     it "accepts nil when the type allows it" do
       nilable = Class.new do
         include Mu::Action
+
         result _Nilable(String)
 
         def call = Success()
@@ -67,6 +69,7 @@ RSpec.describe Mu::Action::Result do
     let(:action_class) do
       Class.new do
         include Mu::Action
+
         prop :empty, _Boolean, default: false
 
         def call = @empty ? Success() : Success(nil)
