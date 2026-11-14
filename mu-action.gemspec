@@ -22,7 +22,7 @@ Gem::Specification.new do |spec|
   spec.metadata["rubygems_mfa_required"] = "true"
 
   # Only the library, its RBS signatures and the docs are released. sig/kernel.rbs and
-  # sig/literal.rbs are local stubs for Steep, and lib/guard/ is a development tool.
+  # sig/literal.rbs are local stubs for Steep.
   docs = %w[README.md LICENSE.txt CHANGELOG.md]
   spec.files = IO.popen(%w[git ls-files -z], chdir: __dir__, err: IO::NULL) do |ls|
     ls.readlines("\x0", chomp: true).select do |f|

@@ -30,7 +30,7 @@ ASDF_RUBY_VERSION=<minimum> bundle update GEM1 GEM2 --conservative
 
 Update one group at a time, each in its own commit (`chore: update <group>`):
 
-1. **Test and tooling**: `rspec*`, `rake`, `guard*`, `irb`.
+1. **Test and tooling**: `rspec*`, `rake`, `irb`.
 2. **RuboCop**: new versions enable new cops (`NewCops: enable`). Autocorrect with
    `bundle exec rubocop -A`, review the diff, and keep it in the same commit.
 3. **Steep and RBS**: new versions report new diagnostics. Fix signatures or add a
