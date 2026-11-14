@@ -2,6 +2,7 @@ module Literal
   module Properties
     def prop: (Symbol, untyped, *untyped, ?default: untyped) -> untyped
     def _Any: () -> untyped
+    def _Nilable: (untyped) -> untyped
   end
 
   class Struct

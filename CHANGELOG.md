@@ -9,6 +9,8 @@
 - `failure` class method to declare an action's failures and the types of their details, plus `failures` to list them. `failure from: OtherAction` accepts the failures of another action.
 - `Mu::Action.on_undeclared_failure`: `:raise` (default) or a callable receiving the action, error and details.
 - A failure raised by a nested `call!` becomes the outer action's failure, with the inner `Failure` in `meta[:cause]`.
+- `context:` keyword: caller information (actor, account, channel...) available as `context` in hooks and `call`, recorded in `meta[:context]`, and inherited by nested actions. `context` is now a reserved prop name.
+- `record_props` class method: record every prop (default), none (`record_props false`), `only:` some or all `except:` some in `meta[:props]`.
 
 ### Changed
 - Minimum Ruby version raised to 3.2 (3.1 is end-of-life).
@@ -19,6 +21,7 @@
 - The unused protected `result_class` method.
 
 ### Fixed
+- A `meta:` hash passed by a caller is no longer modified.
 - `bin/test_readme_examples` now requires `fileutils`, which is no longer loaded indirectly on Ruby 3.4+.
 
 ## [0.2.0] - 2025-10-30

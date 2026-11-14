@@ -7,7 +7,8 @@ module Mu
   # Provides an interactor pattern implementation with hooks, metadata tracking,
   # and result wrapping.
   module Action
-    class << self
+    # Global settings, available as Mu::Action.on_undeclared_failure and so on.
+    module Configuration
       # How an action handles a failure that its declarations don't allow:
       # +:raise+ (the default) raises an ArgumentError, while a callable is
       # called with the action, the error code and the details.
@@ -22,7 +23,13 @@ module Mu
       end
     end
 
+    extend Configuration
+
     self.on_undeclared_failure = :raise
+
+    # Fiber storage key holding the context of the running action, inherited
+    # by the actions it calls.
+    CONTEXT_KEY = :mu_action_context
 
     def self.included(base)
       base.class_eval do
@@ -33,16 +40,18 @@ module Mu
         singleton_class.prepend(MetaPropAdder)
         singleton_class.prepend(HookPropagator)
 
-        attr_reader :meta
+        attr_reader :meta, :context
       end
     end
 
-    # Internal module that automatically adds a meta property to action classes
-    # when they are instantiated. Ensures proper metadata initialization.
+    # Internal module that automatically adds the meta and context properties
+    # to action classes when they are instantiated. Ensures proper metadata
+    # initialization.
     module MetaPropAdder
       def new(...)
         unless @meta_prop_added
           prop :meta, Hash, default: -> { {} } # steep:ignore UnannotatedEmptyCollection
+          prop :context, _Nilable(_Any), default: -> { Fiber[CONTEXT_KEY] }
           @meta_prop_added = true
         end
         instance = super
@@ -68,6 +77,7 @@ module Mu
         subclass.instance_variable_set(:@around_hooks, around_hooks.dup)
         subclass.instance_variable_set(:@own_failures, own_failures.dup)
         subclass.instance_variable_set(:@failure_sources, failure_sources.dup)
+        subclass.instance_variable_set(:@props_recording, props_recording)
       end
     end
 
@@ -124,10 +134,26 @@ module Mu
       private
 
       def initialize_meta
+        @meta = meta.dup
         meta[:class] = self.class
-        meta[:props] = self.class.literal_properties.to_h do |prop|
+        props = recorded_props
+        meta[:props] = props if props
+        meta[:context] = context unless context.nil?
+      end
+
+      def recorded_props
+        recording = self.class.props_recording
+        return if recording == false
+
+        props = self.class.literal_properties.to_h do |prop|
           [prop.name, instance_variable_get(:"@#{prop.name}")]
-        end.except(:meta)
+        end.except(:meta, :context)
+
+        case recording
+        in { only: } then props.slice(*only)
+        in { except: } then props.except(*except)
+        else props
+        end
       end
     end
 
@@ -205,6 +231,18 @@ module Mu
         end
       end
 
+      # Chooses which props are recorded in meta[:props]: all of them (the
+      # default), none, or a subset.
+      #
+      #   record_props false
+      #   record_props only: %i[site_id]
+      #   record_props except: %i[payload]
+      def record_props(enabled = true, only: nil, except: nil) # rubocop:disable Style/OptionalBooleanParameter
+        @props_recording = build_props_recording(enabled, only, except)
+      end
+
+      def props_recording = (defined?(@props_recording) ? @props_recording : true)
+
       # Declares the failures this action can return. Once an action declares
       # any, other failures are handled by Mu::Action.on_undeclared_failure.
       #
@@ -238,6 +276,17 @@ module Mu
       end
 
       private
+
+      def build_props_recording(enabled, only, except)
+        raise ArgumentError, "record_props accepts only: or except:, not both" if only && except
+
+        # @type var filter: ::Hash[Symbol, ::Array[Symbol]]
+        filter = { only:, except: }.compact.transform_values { Array(_1) } # steep:ignore
+        return filter.empty? || filter if enabled
+        raise ArgumentError, "record_props false accepts no only: or except:" if filter.any?
+
+        false
+      end
 
       def register_hook(collection, method_names, block, name:)
         ensure_valid_hook_inputs(method_names, block, name:)
@@ -288,10 +337,18 @@ module Mu
     end
 
     def run!
-      with_hooks { call }
+      with_context { with_hooks { call } }
     end
 
     protected
+
+    def with_context
+      previous = Fiber[CONTEXT_KEY]
+      Fiber[CONTEXT_KEY] = context
+      yield
+    ensure
+      Fiber[CONTEXT_KEY] = previous
+    end
 
     def with_hooks(&)
       run_before_hooks

@@ -4,16 +4,25 @@ module Mu
 
     VERSION: ::String
 
+    CONTEXT_KEY: Symbol
+
     type failure_handler = :raise | ^(untyped action, untyped error, ::Hash[Symbol, untyped] details) -> untyped
+    type props_recording = bool | ::Hash[Symbol, ::Array[Symbol]]
 
-    self.@on_undeclared_failure: failure_handler
+    module Configuration : Kernel
+      @on_undeclared_failure: failure_handler
 
-    def self.on_undeclared_failure: () -> failure_handler
-    def self.on_undeclared_failure=: (failure_handler handler) -> failure_handler
+      def on_undeclared_failure: () -> failure_handler
+      def on_undeclared_failure=: (failure_handler handler) -> failure_handler
+    end
+
+    extend Configuration
     attr_reader meta: ::Hash[untyped, untyped]
+    attr_reader context: untyped
 
     interface _ActionInstance
       def meta: () -> ::Hash[untyped, untyped]
+      def context: () -> untyped
       def class: () -> _ActionClass
       def run: () -> ::Mu::Action::Result
       def run!: () -> ::Mu::Action::Result
@@ -27,6 +36,7 @@ module Mu
       def declares_failures?: () -> bool
       def failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
       def failure_sources: () -> ::Array[_ActionClass]
+      def props_recording: () -> props_recording
       def const_get: (Symbol) -> ::Class
       def instance_method: (Symbol) -> UnboundMethod
       def new: (*untyped, **untyped) -> _ActionInstance
@@ -51,6 +61,7 @@ module Mu
       def around_hooks: () -> ::Array[untyped]
       def own_failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
       def failure_sources: () -> ::Array[_ActionClass]
+      def props_recording: () -> props_recording
     end
 
     class FailureError < StandardError
@@ -84,11 +95,12 @@ module Mu
       def failure?: () -> true
     end
 
-    module Initializer
+    module Initializer : _ActionInstance
+      @meta: ::Hash[untyped, untyped]
+
       def initialize: (*untyped, **untyped) -> void
       def initialize_meta: () -> void
-      def meta: () -> ::Hash[untyped, untyped]
-      def self.literal_properties: () -> ::Array[untyped]
+      def recorded_props: () -> ::Hash[Symbol, untyped]?
     end
 
     module FailureChecking : _ActionInstance
@@ -115,6 +127,9 @@ module Mu
       def declares_failures?: () -> bool
       def own_failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
       def failure_sources: () -> ::Array[_ActionClass]
+      def record_props: (?bool enabled, ?only: (Symbol | ::Array[Symbol])?, ?except: (Symbol | ::Array[Symbol])?) -> props_recording
+      def props_recording: () -> props_recording
+      def build_props_recording: (bool enabled, (Symbol | ::Array[Symbol])? only, (Symbol | ::Array[Symbol])? except) -> props_recording
       def register_hook: (untyped collection, untyped method_names, ::Proc? block, name: Symbol) -> untyped
       def normalize_hook_inputs: (untyped method_names, ::Proc? block, name: Symbol) -> untyped
       def ensure_valid_hook_inputs: (untyped method_names, ::Proc? block, name: Symbol) -> void
@@ -127,6 +142,7 @@ module Mu
     def Failure: (untyped error, **untyped) -> bot
     def run: () -> Result
     def run!: () -> Result
+    def with_context: [T] () { () -> T } -> T
     def failure_from: (FailureError exception) -> Failure
     def check_failure: (untyped error, ::Hash[Symbol, untyped] details, ?origin: untyped) -> void
     def with_hooks: () { () -> Result } -> Result

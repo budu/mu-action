@@ -287,6 +287,46 @@ assert result.meta == {
 }
 ```
 
+To keep sensitive or bulky props out of the metadata, choose which ones are recorded:
+
+```ruby
+class SignIn
+  include Mu::Action
+
+  record_props except: %i[password]   # or only: [...], or record_props false
+
+  prop :email, String
+  prop :password, String
+
+  def call = Success(@email)
+end
+
+assert SignIn.call(email: "jane@example.com", password: "secret").meta[:props] == { email: "jane@example.com" }
+```
+
+### Context
+
+Information about who is calling and from where, such as the actor, the account or the channel, goes in `context` rather than in props. It's available in hooks and in `call`, and it's recorded in `meta[:context]`. It can be any object.
+
+```ruby
+class ArchiveProject
+  include Mu::Action
+
+  prop :project_id, Integer
+
+  before do
+    meta[:archived_by] = context[:actor]
+  end
+
+  def call = Success(@project_id)
+end
+
+result = ArchiveProject.call(project_id: 42, context: { actor: "jane", channel: :web })
+assert result.meta[:archived_by] == "jane"
+```
+
+Interactors called by another one inherit its context, so a hook in a nested interactor sees the same actor. Pass `context:` explicitly to override it.
+
 ## Differences from the Interactor Gem
 
 The main difference and the motivation for creating `Mu::Action` is to separate the context into inputs, an output, and metadata. This allows for a more structured approach to handling business logic, making it easier to reason about the flow of data and the state of the application.

@@ -138,6 +138,70 @@ RSpec.describe "Mu::Action metadata and property tracking" do
     end
   end
 
+  describe "caller metadata" do
+    it "does not modify the hash given by the caller" do
+      given = { request_id: "abc" }
+      instance = action_class.new(name: "Test", meta: given)
+
+      expect(instance.meta).to include(request_id: "abc", class: action_class)
+      expect(given).to eq(request_id: "abc")
+    end
+  end
+
+  describe "record_props" do
+    def recording(*args, **kwargs)
+      Class.new do
+        include Mu::Action
+
+        prop :name, String
+        prop :secret, String
+
+        record_props(*args, **kwargs)
+
+        def call = Success(:ok)
+      end
+    end
+
+    it "records every prop by default" do
+      expect(action_class.props_recording).to be true
+    end
+
+    it "records no props when disabled" do
+      result = recording(false).call(name: "n", secret: "s")
+
+      expect(result.meta).not_to have_key(:props)
+    end
+
+    it "records only the given props" do
+      result = recording(only: :name).call(name: "n", secret: "s")
+
+      expect(result.meta[:props]).to eq(name: "n")
+    end
+
+    it "records every prop except the given ones" do
+      result = recording(except: %i[secret]).call(name: "n", secret: "s")
+
+      expect(result.meta[:props]).to eq(name: "n")
+    end
+
+    it "is inherited without being shared" do
+      parent = recording(except: %i[secret])
+      child = Class.new(parent) { record_props false }
+
+      expect(parent.props_recording).to eq(except: %i[secret])
+      expect(child.props_recording).to be false
+      expect(Class.new(parent).props_recording).to eq(except: %i[secret])
+    end
+
+    it "rejects only: with except:" do
+      expect { recording(only: :name, except: :secret) }.to raise_error(ArgumentError, /not both/)
+    end
+
+    it "rejects false with only: or except:" do
+      expect { recording(false, only: :name) }.to raise_error(ArgumentError, /accepts no only:/)
+    end
+  end
+
   describe "MetaPropAdder module" do
     it "adds meta property only once per class" do
       # Create multiple instances to trigger new method multiple times
