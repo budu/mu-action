@@ -354,13 +354,13 @@ RSpec.describe "Mu::Action hooks" do
     end
 
     it "handles failures" do
-      action_class.before { raise Mu::Action::FailureError.new("Failure error", meta: { hook: "before" }) }
+      action_class.before { Failure("Failure error", hook: "before") }
 
       result = action_class.call(name: "Test")
 
       expect(result.failure?).to be true
       expect(result.error).to eq("Failure error")
-      expect(result.meta).to include(hook: "before")
+      expect(result.details).to eq(hook: "before")
     end
   end
 end

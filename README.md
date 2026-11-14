@@ -62,7 +62,7 @@ end
 
 ### Results
 
-A `Success` result contains the `value` returned by the interactor, while a `Failure` result contains an `error` value. Both result types respond to `#success?` and `#failure?` methods to check their status. They also provide a `#meta` method to access metadata about the execution, such as the class name, properties.
+A `Success` result contains the `value` returned by the interactor, while a `Failure` result contains an `error` value, usually a symbol, and a `details` hash built from the keyword arguments given to `Failure`. Both result types respond to `#success?` and `#failure?` methods to check their status. They also provide a `#meta` method to access metadata about the execution, such as the class name and properties. Metadata is for diagnostics; anything a caller needs belongs in `details`.
 
 A failure will return immediately.
 
@@ -198,6 +198,81 @@ assert (1..6).cover? result
 ```
 
 You can refer to the [Literal documentation](https://literal.fun/docs) for more details on the [built-in types](https://literal.fun/docs/built-in-types.html) or see some [example types](https://literal.fun/docs/example-types.html).
+
+### Failures
+
+`Failure` takes an error code and, optionally, details as keyword arguments:
+
+```ruby
+class RenameProject
+  include Mu::Action
+
+  prop :name, String
+
+  def call
+    Failure(:invalid, errors: ["name can't be blank"]) if @name.empty?
+    Success(@name)
+  end
+end
+
+case RenameProject.call(name: "")
+in Mu::Action::Failure(error: :invalid, details: { errors: })
+  assert errors == ["name can't be blank"]
+end
+```
+
+An interactor can declare the failures it returns, with the types of their details. Once it declares any, an undeclared failure or a detail of the wrong type raises an `ArgumentError`. Interactors without declarations accept any failure.
+
+```ruby
+class PublishArticle
+  include Mu::Action
+
+  failure :already_published
+  failure :invalid, errors: _Array(String)
+
+  prop :title, String
+
+  def call
+    Failure(:invalid, errors: ["title is missing"]) if @title.empty?
+    Success(@title)
+  end
+end
+
+assert PublishArticle.failures.keys == %i[already_published invalid]
+```
+
+To report undeclared failures instead of raising, give `Mu::Action.on_undeclared_failure` a callable. It receives the interactor, the error code and the details, and the failure goes through:
+
+```ruby
+Mu::Action.on_undeclared_failure = lambda do |action, error, details|
+  Rails.logger.info "#{action.class} returned undeclared failure #{error.inspect}"
+end
+
+Mu::Action.on_undeclared_failure = :raise # the default
+```
+
+To compose interactors, call the inner one with `call!`. Its failure becomes the outer interactor's failure, with the same error and details, and the inner `Failure` is kept in `meta[:cause]`. Use `failure from:` to accept every failure of the inner interactor:
+
+```ruby
+class PublishFeaturedArticle
+  include Mu::Action
+
+  failure from: PublishArticle
+
+  prop :title, String
+
+  def call
+    title = PublishArticle.call!(title: @title)
+    Success("Featured: #{title}")
+  end
+end
+
+result = PublishFeaturedArticle.call(title: "")
+assert result.error == :invalid
+assert result.meta[:cause].meta[:class] == PublishArticle
+```
+
+Because the inner failure is raised as an exception, around hooks such as transactions see it and can roll back.
 
 ### Metadata Tracking
 

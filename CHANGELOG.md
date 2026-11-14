@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+### Breaking
+- Keyword arguments to `Failure` now go to the new `Failure#details` instead of being merged into `meta`. Read `result.details[:errors]` where you used `result.meta[:errors]`.
+- `FailureError#meta` is replaced by `#details` and `#failure` (the `Failure` result, set when raised by `call!`).
+- `call!` raises a new `FailureError` whose `cause` is the original one.
+
+### Added
+- `failure` class method to declare an action's failures and the types of their details, plus `failures` to list them. `failure from: OtherAction` accepts the failures of another action.
+- `Mu::Action.on_undeclared_failure`: `:raise` (default) or a callable receiving the action, error and details.
+- A failure raised by a nested `call!` becomes the outer action's failure, with the inner `Failure` in `meta[:cause]`.
+
 ### Changed
 - Minimum Ruby version raised to 3.2 (3.1 is end-of-life).
 - CI now tests Ruby 3.2, 3.3, 3.4 and 4.0.

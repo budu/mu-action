@@ -126,10 +126,10 @@ RSpec.describe Mu::Action do
         end.to raise_error(Mu::Action::FailureError, "test error")
       end
 
-      it "includes additional metadata in the failure" do
-        instance.Failure("test error", extra: "info")
-      rescue Mu::Action::FailureError => e
-        expect(e.meta).to include(extra: "info")
+      it "includes the details in the failure" do
+        expect do
+          instance.Failure("test error", extra: "info")
+        end.to raise_error(Mu::Action::FailureError) { expect(_1.details).to eq(extra: "info") }
       end
     end
   end

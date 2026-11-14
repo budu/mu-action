@@ -7,7 +7,8 @@ RSpec.describe Mu::Action::FailureError do
 
       expect(failure.error).to eq("Something went wrong")
       expect(failure.message).to eq("Something went wrong")
-      expect(failure.meta).to eq({})
+      expect(failure.details).to eq({})
+      expect(failure.failure).to be_nil
     end
 
     it "accepts an error object" do
@@ -18,16 +19,17 @@ RSpec.describe Mu::Action::FailureError do
       expect(failure.message).to eq(original_error.message)
     end
 
-    it "accepts metadata" do
-      meta = { foo: :bar }
-      failure = described_class.new("Error", meta:)
+    it "accepts details" do
+      failure = described_class.new(:invalid, details: { field: :name })
 
-      expect(failure.meta).to eq(meta)
+      expect(failure.details).to eq(field: :name)
     end
 
-    it "defaults to empty metadata hash" do
-      failure = described_class.new("Error")
-      expect(failure.meta).to eq({})
+    it "accepts the failure result" do
+      result = Mu::Action::Failure.new(:invalid)
+      failure = described_class.new(:invalid, failure: result)
+
+      expect(failure.failure).to be(result)
     end
   end
 

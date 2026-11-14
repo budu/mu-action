@@ -7,11 +7,29 @@ module Mu
   # Provides an interactor pattern implementation with hooks, metadata tracking,
   # and result wrapping.
   module Action
+    class << self
+      # How an action handles a failure that its declarations don't allow:
+      # +:raise+ (the default) raises an ArgumentError, while a callable is
+      # called with the action, the error code and the details.
+      attr_reader :on_undeclared_failure
+
+      def on_undeclared_failure=(handler)
+        unless handler == :raise || handler.respond_to?(:call)
+          raise ArgumentError, "on_undeclared_failure must be :raise or respond to #call"
+        end
+
+        @on_undeclared_failure = handler
+      end
+    end
+
+    self.on_undeclared_failure = :raise
+
     def self.included(base)
       base.class_eval do
         extend Literal::Properties
         extend ClassMethods
         include Initializer
+        include FailureChecking
         singleton_class.prepend(MetaPropAdder)
         singleton_class.prepend(HookPropagator)
 
@@ -39,25 +57,29 @@ module Mu
       end
     end
 
-    # Internal module that ensures hook arrays are properly duplicated when
-    # action classes are inherited, preventing shared state between classes.
+    # Internal module that ensures hook arrays and failure declarations are
+    # properly duplicated when action classes are inherited, preventing shared
+    # state between classes.
     module HookPropagator
       def inherited(subclass)
         super
         subclass.instance_variable_set(:@before_hooks, before_hooks.dup)
         subclass.instance_variable_set(:@after_hooks, after_hooks.dup)
         subclass.instance_variable_set(:@around_hooks, around_hooks.dup)
+        subclass.instance_variable_set(:@own_failures, own_failures.dup)
+        subclass.instance_variable_set(:@failure_sources, failure_sources.dup)
       end
     end
 
-    # Exception class for action failures. Wraps the original error
-    # and includes metadata for debugging and logging purposes.
+    # Exception class for action failures. Carries the error code and its
+    # details. When raised by +call!+, it also carries the Failure result.
     class FailureError < StandardError
-      attr_reader :error, :meta
+      attr_reader :error, :details, :failure
 
-      def initialize(error, meta: {})
+      def initialize(error, details: {}, failure: nil)
         @error = error
-        @meta = meta
+        @details = details
+        @failure = failure
         super(error)
       end
     end
@@ -83,8 +105,9 @@ module Mu
     # Failure result class for pattern matching
     class Failure < Result
       prop :error, _Any, :positional, default: nil
+      prop :details, Hash, default: -> { {} } # steep:ignore UnannotatedEmptyCollection
 
-      attr_reader :error
+      attr_reader :error, :details
 
       def success? = false
       def failure? = true
@@ -108,6 +131,55 @@ module Mu
       end
     end
 
+    # Internal module that builds Failure results and checks failures against
+    # the action's declarations.
+    module FailureChecking
+      private
+
+      def failure_from(exception)
+        cause = exception.failure
+        check_failure(exception.error, exception.details, origin: cause.meta[:class]) if cause
+        # @type var failure_meta: ::Hash[Symbol, untyped]
+        failure_meta = { **meta, failure_error: exception }
+        failure_meta[:cause] = cause if cause
+        Failure.new(exception.error, details: exception.details, meta: failure_meta)
+      end
+
+      def check_failure(error, details, origin: nil)
+        return unless self.class.declares_failures?
+        return if origin && self.class.failure_sources.any? { origin <= _1 }
+
+        problem = failure_problem(error, details)
+        return unless problem
+
+        case (handler = Mu::Action.on_undeclared_failure)
+        when :raise then raise ArgumentError, "#{self.class}: #{problem}"
+        else handler.call(self, error, details)
+        end
+      end
+
+      def failure_problem(error, details)
+        failures = self.class.failures
+        return "undeclared failure #{error.inspect}" unless failures.key?(error)
+
+        types = failures[error]
+        unexpected = details.keys - types.keys
+        return "unexpected details #{unexpected.inspect} for failure #{error.inspect}" if unexpected.any?
+
+        detail_problem(error, types, details)
+      end
+
+      def detail_problem(error, types, details)
+        types.each do |key, type|
+          value = details[key]
+          next if type === value # rubocop:disable Style/CaseEquality
+
+          return "detail #{key.inspect} of failure #{error.inspect} must be #{type.inspect}, got #{value.inspect}"
+        end
+        nil
+      end
+    end
+
     # Class methods added to action classes when including Mu::Action.
     # Provides hook registration, execution methods, and result type definition.
     module ClassMethods
@@ -122,16 +194,40 @@ module Mu
       def call(...) = new(...).run
 
       def call!(...)
-        result = new(...).run!
+        result = new(...).run
         case result
         in Success(value:)
           value
-        in Failure(meta: { failure_error: })
-          raise failure_error
+        in Failure(error:, details:, meta:)
+          raise FailureError.new(error, details:, failure: result), cause: meta[:failure_error]
         else
           result
         end
       end
+
+      # Declares the failures this action can return. Once an action declares
+      # any, other failures are handled by Mu::Action.on_undeclared_failure.
+      #
+      #   failure :site_disabled
+      #   failure :invalid, errors: ActiveModel::Errors
+      #   failure from: OtherAction
+      def failure(*codes, from: nil, **details)
+        raise ArgumentError, "failure requires a code or from:" if codes.empty? && !from
+        raise ArgumentError, "details can only be declared for a single failure" if codes.size > 1 && details.any?
+
+        codes.each { own_failures[_1] = details }
+        failure_sources.concat(Array(from))
+      end
+
+      # The declared failures, including those of the +from:+ actions,
+      # as a hash of error code to details types.
+      def failures
+        failure_sources.map(&:failures).reduce({}, :merge).merge(own_failures)
+      end
+
+      def declares_failures? = own_failures.any? || failure_sources.any?
+      def own_failures = (@own_failures ||= {})
+      def failure_sources = (@failure_sources ||= [])
 
       def result(type)
         success_class = Class.new(::Mu::Action::Success) do
@@ -178,13 +274,17 @@ module Mu
 
     # rubocop:disable Naming/MethodName
     def Success(value) = self.class.const_get(:Success).new(value, meta:)
-    def Failure(error, **meta) = raise FailureError.new(error, meta:)
+
+    def Failure(error, **details)
+      check_failure(error, details)
+      raise FailureError.new(error, details:)
+    end
     # rubocop:enable Naming/MethodName
 
     def run
       run!
     rescue FailureError => e
-      Failure.new(e.error, meta: { failure_error: e, **meta, **e.meta })
+      failure_from(e)
     end
 
     def run!

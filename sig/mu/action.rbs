@@ -3,6 +3,13 @@ module Mu
     include Kernel
 
     VERSION: ::String
+
+    type failure_handler = :raise | ^(untyped action, untyped error, ::Hash[Symbol, untyped] details) -> untyped
+
+    self.@on_undeclared_failure: failure_handler
+
+    def self.on_undeclared_failure: () -> failure_handler
+    def self.on_undeclared_failure=: (failure_handler handler) -> failure_handler
     attr_reader meta: ::Hash[untyped, untyped]
 
     interface _ActionInstance
@@ -17,6 +24,9 @@ module Mu
       def before_hooks: () -> ::Array[untyped]
       def after_hooks: () -> ::Array[untyped]
       def around_hooks: () -> ::Array[untyped]
+      def declares_failures?: () -> bool
+      def failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
+      def failure_sources: () -> ::Array[_ActionClass]
       def const_get: (Symbol) -> ::Class
       def instance_method: (Symbol) -> UnboundMethod
       def new: (*untyped, **untyped) -> _ActionInstance
@@ -39,13 +49,16 @@ module Mu
       def before_hooks: () -> ::Array[untyped]
       def after_hooks: () -> ::Array[untyped]
       def around_hooks: () -> ::Array[untyped]
+      def own_failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
+      def failure_sources: () -> ::Array[_ActionClass]
     end
 
     class FailureError < StandardError
       attr_reader error: untyped
-      attr_reader meta: ::Hash[untyped, untyped]
+      attr_reader details: ::Hash[Symbol, untyped]
+      attr_reader failure: Failure?
 
-      def initialize: (untyped error, ?meta: ::Hash[untyped, untyped]) -> void
+      def initialize: (untyped error, ?details: ::Hash[Symbol, untyped], ?failure: Failure?) -> void
     end
 
     class Result < Literal::Struct
@@ -64,6 +77,7 @@ module Mu
 
     class Failure < Result
       attr_reader error: untyped
+      attr_reader details: ::Hash[Symbol, untyped]
 
       def initialize: (*untyped, **untyped) -> void
       def success?: () -> false
@@ -75,6 +89,13 @@ module Mu
       def initialize_meta: () -> void
       def meta: () -> ::Hash[untyped, untyped]
       def self.literal_properties: () -> ::Array[untyped]
+    end
+
+    module FailureChecking : _ActionInstance
+      def failure_from: (FailureError exception) -> Failure
+      def check_failure: (untyped error, ::Hash[Symbol, untyped] details, ?origin: untyped) -> void
+      def failure_problem: (untyped error, ::Hash[Symbol, untyped] details) -> ::String?
+      def detail_problem: (untyped error, ::Hash[Symbol, untyped] types, ::Hash[Symbol, untyped] details) -> ::String?
     end
 
     module ClassMethods
@@ -89,6 +110,11 @@ module Mu
       def call: (*untyped, **untyped) -> untyped
       def call!: (*untyped, **untyped) -> untyped
       def result: (untyped type) -> ::Class
+      def failure: (*untyped codes, ?from: untyped, **untyped details) -> ::Array[_ActionClass]
+      def failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
+      def declares_failures?: () -> bool
+      def own_failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
+      def failure_sources: () -> ::Array[_ActionClass]
       def register_hook: (untyped collection, untyped method_names, ::Proc? block, name: Symbol) -> untyped
       def normalize_hook_inputs: (untyped method_names, ::Proc? block, name: Symbol) -> untyped
       def ensure_valid_hook_inputs: (untyped method_names, ::Proc? block, name: Symbol) -> void
@@ -101,6 +127,8 @@ module Mu
     def Failure: (untyped error, **untyped) -> bot
     def run: () -> Result
     def run!: () -> Result
+    def failure_from: (FailureError exception) -> Failure
+    def check_failure: (untyped error, ::Hash[Symbol, untyped] details, ?origin: untyped) -> void
     def with_hooks: () { () -> Result } -> Result
     def run_before_hooks: () -> ::Array[untyped]
     def run_after_hooks: () -> ::Array[untyped]

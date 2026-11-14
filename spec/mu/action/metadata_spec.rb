@@ -110,21 +110,19 @@ RSpec.describe "Mu::Action metadata and property tracking" do
       )
     end
 
-    it "merges additional metadata from Failure calls" do
-      action_with_meta = Class.new do
+    it "keeps Failure details out of metadata" do
+      action_with_details = Class.new do
         include Mu::Action
 
         def call
-          Failure("error", extra: "info", timestamp: Time.now)
+          Failure("error", extra: "info")
         end
       end
 
-      result = action_with_meta.call
+      result = action_with_details.call
 
-      expect(result.meta).to include(
-        extra: "info",
-        timestamp: be_a(Time)
-      )
+      expect(result.details).to eq(extra: "info")
+      expect(result.meta).not_to have_key(:extra)
     end
 
     it "preserves metadata modifications made in hooks" do
