@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Changed
+- Development now follows agent skills in `.agents/skills` (commits, pull requests, changelog, dependencies, releases, reviews), and `AGENTS.md` is the single guide; `CLAUDE.md` points to it.
+
 ## [0.3.0] - 2026-11-14
 
 ### Breaking
