@@ -3,6 +3,7 @@
 
 require "bundler/setup"
 require "mu/action"
+require "fileutils"
 require "optparse"
 
 # TestReadmeExamples is an action that extracts Ruby code blocks from a README file and run
