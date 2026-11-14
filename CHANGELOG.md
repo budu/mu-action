@@ -2,6 +2,7 @@
 
 ### Changed
 - `bin/check` is renamed `bin/ci`. It runs the checks on every supported Ruby version, using asdf, and `bin/ci --current` runs them on the current Ruby only.
+- Development dependencies updated, including json 3, prism 2, erb 6 and rdoc 8. Steep and RBS stay at 2.0 and 4.1, the last versions that support Ruby 3.2.
 - Development now follows agent skills in `.agents/skills` (commits, pull requests, changelog, dependencies, releases, reviews), and `AGENTS.md` is the single guide; `CLAUDE.md` points to it.
 
 ## [0.3.0] - 2026-11-14
