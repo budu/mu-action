@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-14
+
 ### Breaking
 - Keyword arguments to `Failure` now go to the new `Failure#details` instead of being merged into `meta`. Read `result.details[:errors]` where you used `result.meta[:errors]`.
 - `FailureError#meta` is replaced by `#details` and `#failure` (the `Failure` result, set when raised by `call!`).
