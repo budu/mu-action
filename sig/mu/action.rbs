@@ -138,7 +138,7 @@ module Mu
       def new: (*untyped, **untyped) -> _ActionInstance
     end
 
-    def Success: (untyped value) -> Success
+    def Success: (?untyped value) -> Success
     def Failure: (untyped error, **untyped) -> bot
     def run: () -> Result
     def run!: () -> Result

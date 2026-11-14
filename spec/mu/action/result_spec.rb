@@ -44,6 +44,52 @@ RSpec.describe Mu::Action::Result do
       expect { action_class.call(value: 1) }
         .to raise_error(Literal::TypeError, /Expected: String/)
     end
+
+    it "rejects nil unless the type allows it" do
+      action_class.define_method(:call) { Success() }
+
+      expect { action_class.call }.to raise_error(Literal::TypeError)
+    end
+
+    it "accepts nil when the type allows it" do
+      nilable = Class.new do
+        include Mu::Action
+        result _Nilable(String)
+
+        def call = Success()
+      end
+
+      expect(nilable.call!).to be_nil
+    end
+  end
+
+  describe "nil values" do
+    let(:action_class) do
+      Class.new do
+        include Mu::Action
+        prop :empty, _Boolean, default: false
+
+        def call = @empty ? Success() : Success(nil)
+      end
+    end
+
+    it "accepts nil as the value of an untyped action" do
+      expect(action_class.call.value).to be_nil
+      expect(action_class.call!).to be_nil
+    end
+
+    it "defaults the value to nil when Success is called without one" do
+      expect(action_class.call(empty: true).value).to be_nil
+    end
+
+    it "builds a Success without a value" do
+      expect(Mu::Action::Success.new.value).to be_nil
+    end
+
+    it "requires an error for a Failure" do
+      expect { Mu::Action::Failure.new }.to raise_error(ArgumentError)
+      expect { Mu::Action::Failure.new(nil) }.to raise_error(Literal::TypeError)
+    end
   end
 
   describe "pattern matching" do

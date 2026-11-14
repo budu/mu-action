@@ -62,7 +62,7 @@ end
 
 ### Results
 
-A `Success` result contains the `value` returned by the interactor, while a `Failure` result contains an `error` value, usually a symbol, and a `details` hash built from the keyword arguments given to `Failure`. Both result types respond to `#success?` and `#failure?` methods to check their status. They also provide a `#meta` method to access metadata about the execution, such as the class name and properties. Metadata is for diagnostics; anything a caller needs belongs in `details`.
+A `Success` result contains the `value` returned by the interactor, while a `Failure` result contains an `error` value, usually a symbol, and a `details` hash built from the keyword arguments given to `Failure`. Both result types respond to `#success?` and `#failure?` methods to check their status. They also provide a `#meta` method to access metadata about the execution, such as the class name and properties. Metadata is for diagnostics; anything a caller needs belongs in `details`. An interactor with nothing to return can call `Success()` without a value.
 
 A failure will return immediately.
 

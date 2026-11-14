@@ -13,6 +13,7 @@
 - `record_props` class method: record every prop (default), none (`record_props false`), `only:` some or all `except:` some in `meta[:props]`.
 
 ### Changed
+- An action without a `result` type accepts `nil` as its success value, and `Success()` can be called without a value. Typed results still reject `nil` unless declared with `_Nilable`.
 - Minimum Ruby version raised to 3.2 (3.1 is end-of-life).
 - CI now tests Ruby 3.2, 3.3, 3.4 and 4.0.
 - Development lockfile updated to Literal 1.9.0 and minitest 6.1.0 (needed for Ruby 4.0).

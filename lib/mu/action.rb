@@ -104,7 +104,7 @@ module Mu
 
     # Success result class for pattern matching
     class Success < Result
-      prop :value, _Any, :positional, default: nil
+      prop :value, _Nilable(_Any), :positional
 
       attr_reader :value
 
@@ -114,7 +114,7 @@ module Mu
 
     # Failure result class for pattern matching
     class Failure < Result
-      prop :error, _Any, :positional, default: nil
+      prop :error, _Any, :positional
       prop :details, Hash, default: -> { {} } # steep:ignore UnannotatedEmptyCollection
 
       attr_reader :error, :details
@@ -269,7 +269,7 @@ module Mu
 
       def result(type)
         success_class = Class.new(::Mu::Action::Success) do
-          prop :value, type, :positional, default: nil
+          prop :value, type, :positional
         end
 
         const_set(:Success, success_class)
@@ -322,7 +322,7 @@ module Mu
     end
 
     # rubocop:disable Naming/MethodName
-    def Success(value) = self.class.const_get(:Success).new(value, meta:)
+    def Success(value = nil) = self.class.const_get(:Success).new(value, meta:)
 
     def Failure(error, **details)
       check_failure(error, details)
