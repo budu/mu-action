@@ -101,7 +101,6 @@ module Mu
     def Failure: (untyped error, **untyped) -> bot
     def run: () -> Result
     def run!: () -> Result
-    def result_class: () -> ::Class
     def with_hooks: () { () -> Result } -> Result
     def run_before_hooks: () -> ::Array[untyped]
     def run_after_hooks: () -> ::Array[untyped]

@@ -193,8 +193,6 @@ module Mu
 
     protected
 
-    def result_class = self.class.const_get(:Result)
-
     def with_hooks(&)
       run_before_hooks
       call_chain = build_around_chain(&)
