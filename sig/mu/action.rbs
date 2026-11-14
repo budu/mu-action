@@ -1,5 +1,5 @@
 module Mu
-  module Action : Object, Hooks
+  module Action : Object, Hooks, Failures
     VERSION: ::String
 
     CONTEXT_KEY: Symbol
@@ -43,8 +43,6 @@ module Mu
 
     module HookPropagator
       def inherited: (untyped subclass) -> void
-      def own_failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
-      def failure_sources: () -> ::Array[_ActionClass]
       def props_recording: () -> props_recording
     end
 
@@ -56,24 +54,12 @@ module Mu
       def recorded_props: () -> ::Hash[Symbol, untyped]?
     end
 
-    module FailureChecking : _ActionInstance
-      def failure_from: (FailureError exception) -> Failure
-      def check_failure: (untyped error, ::Hash[Symbol, untyped] details, ?origin: untyped) -> void
-      def failure_problem: (untyped error, ::Hash[Symbol, untyped] details) -> ::String?
-      def detail_problem: (untyped error, ::Hash[Symbol, untyped] types, ::Hash[Symbol, untyped] details) -> ::String?
-    end
-
     module ClassMethods
       include Literal::Properties
 
       def call: (*untyped, **untyped) -> untyped
       def call!: (*untyped, **untyped) -> untyped
       def result: (untyped type) -> ::Class
-      def failure: (*untyped codes, ?from: untyped, **untyped details) -> ::Array[_ActionClass]
-      def failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
-      def declares_failures?: () -> bool
-      def own_failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
-      def failure_sources: () -> ::Array[_ActionClass]
       def record_props: (?bool enabled, ?only: (Symbol | ::Array[Symbol])?, ?except: (Symbol | ::Array[Symbol])?) -> props_recording
       def props_recording: () -> props_recording
       def build_props_recording: (bool enabled, (Symbol | ::Array[Symbol])? only, (Symbol | ::Array[Symbol])? except) -> props_recording
@@ -86,8 +72,6 @@ module Mu
     def run: () -> Result
     def run!: () -> Result
     def with_context: [T] () { () -> T } -> T
-    def failure_from: (FailureError exception) -> Failure
-    def check_failure: (untyped error, ::Hash[Symbol, untyped] details, ?origin: untyped) -> void
     def call: () -> untyped
   end
 end
