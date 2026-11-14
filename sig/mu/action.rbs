@@ -1,7 +1,5 @@
 module Mu
-  module Action
-    include Kernel
-
+  module Action : Object, Hooks
     VERSION: ::String
 
     CONTEXT_KEY: Symbol
@@ -35,9 +33,6 @@ module Mu
     end
 
     def self.included: (untyped base) -> void
-    def self.before_hooks: () -> ::Array[untyped]
-    def self.after_hooks: () -> ::Array[untyped]
-    def self.around_hooks: () -> ::Array[untyped]
 
     module MetaPropAdder
       include Literal::Properties
@@ -48,9 +43,6 @@ module Mu
 
     module HookPropagator
       def inherited: (untyped subclass) -> void
-      def before_hooks: () -> ::Array[untyped]
-      def after_hooks: () -> ::Array[untyped]
-      def around_hooks: () -> ::Array[untyped]
       def own_failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
       def failure_sources: () -> ::Array[_ActionClass]
       def props_recording: () -> props_recording
@@ -74,12 +66,6 @@ module Mu
     module ClassMethods
       include Literal::Properties
 
-      def around: (*Symbol) ?{ (*untyped) -> untyped } -> ::Array[untyped]
-      def before: (*Symbol) ?{ (*untyped) -> untyped } -> ::Array[untyped]
-      def after: (*Symbol) ?{ (*untyped) -> untyped } -> ::Array[untyped]
-      def around_hooks: () -> ::Array[untyped]
-      def before_hooks: () -> ::Array[untyped]
-      def after_hooks: () -> ::Array[untyped]
       def call: (*untyped, **untyped) -> untyped
       def call!: (*untyped, **untyped) -> untyped
       def result: (untyped type) -> ::Class
@@ -91,10 +77,6 @@ module Mu
       def record_props: (?bool enabled, ?only: (Symbol | ::Array[Symbol])?, ?except: (Symbol | ::Array[Symbol])?) -> props_recording
       def props_recording: () -> props_recording
       def build_props_recording: (bool enabled, (Symbol | ::Array[Symbol])? only, (Symbol | ::Array[Symbol])? except) -> props_recording
-      def register_hook: (untyped collection, untyped method_names, ::Proc? block, name: Symbol) -> untyped
-      def normalize_hook_inputs: (untyped method_names, ::Proc? block, name: Symbol) -> untyped
-      def ensure_valid_hook_inputs: (untyped method_names, ::Proc? block, name: Symbol) -> void
-      def symbolize_hook_names: (untyped method_names, name: Symbol) -> ::Array[Symbol]
       def const_set: (Symbol, ::Class) -> ::Class
       def new: (*untyped, **untyped) -> _ActionInstance
     end
@@ -106,15 +88,6 @@ module Mu
     def with_context: [T] () { () -> T } -> T
     def failure_from: (FailureError exception) -> Failure
     def check_failure: (untyped error, ::Hash[Symbol, untyped] details, ?origin: untyped) -> void
-    def with_hooks: () { () -> Result } -> Result
-    def run_before_hooks: () -> ::Array[untyped]
-    def run_after_hooks: () -> ::Array[untyped]
-    def build_around_chain: () { () -> Result } -> ::Proc
-    def execute_simple_hook: (::Proc | ::Symbol) -> untyped
-    def build_around_wrapper: ((::Proc | ::Symbol), ::Proc) -> ::Proc
-    def invoke_around_method: (::Symbol, ::Proc) -> untyped
-    def around_arguments: (UnboundMethod, ::Proc) -> ::Array[untyped]
-    def resolve_method: (Symbol) -> UnboundMethod
     def call: () -> untyped
   end
 end
