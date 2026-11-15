@@ -24,7 +24,7 @@ RSpec.describe "Mu::Action metadata and property tracking" do
       )
     end
 
-    it "adds meta property automatically via MetaPropAdder" do
+    it "adds meta property automatically when the class is instantiated" do
       action_class.new(name: "Test") # Trigger meta property addition
       expect(action_class.literal_properties.map(&:name)).to include(:meta)
     end
@@ -203,7 +203,7 @@ RSpec.describe "Mu::Action metadata and property tracking" do
     end
   end
 
-  describe "MetaPropAdder module" do
+  describe "meta property" do
     it "adds meta property only once per class" do
       # Create multiple instances to trigger new method multiple times
       3.times { action_class.new(name: "Test#{_1}") }

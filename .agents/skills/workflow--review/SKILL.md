@@ -21,8 +21,8 @@ much as correctness.
   `failure`, the hooks, `record_props`, `context`, `meta`, or the `Result` classes.
   Is it breaking? Is it marked `!` with a `Breaking` changelog entry?
 - **Class-level state and inheritance**: hooks, declared failures, and prop recording
-  live on the class and are copied in `inherited`. New class-level state must be
-  copied too, and a subclass must not modify its parent.
+  live on the class and are copied in each feature's `inherited`. New class-level
+  state must be copied too, and a subclass must not modify its parent.
 - **Literal**: props that are added lazily, reserved prop names (`meta`, `context`),
   and nil handling (`_Any` rejects nil; a nil `default:` means no default).
 - **Failure flow**: `Failure` raises, so code after it does not run and `after`
@@ -30,7 +30,7 @@ much as correctness.
 - **Context**: fiber storage must be restored on every exit path.
 - **Ruby versions**: syntax and standard library use must work on the minimum
   version in the gemspec.
-- **Signatures and docs**: `sig/mu/action.rbs` and the README match the code; README
+- **Signatures and docs**: the RBS files under `sig/mu/` and the README match the code; README
   examples run (`bin/test_readme_examples`).
 - **Packaging**: new files that must ship are matched by the gemspec allowlist, and
   nothing else is.

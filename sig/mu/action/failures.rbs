@@ -1,0 +1,24 @@
+module Mu
+  module Action
+    module Failures : _ActionInstance
+      def self.included: (untyped base) -> void
+
+      module ClassMethods
+        def failure: (*untyped codes, ?from: untyped, **untyped details) -> ::Array[_ActionClass]
+        def failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
+        def declares_failures?: () -> bool
+        def own_failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
+        def failure_sources: () -> ::Array[_ActionClass]
+      end
+
+      module Inheritance : ClassMethods
+        def inherited: (untyped subclass) -> void
+      end
+
+      def failure_from: (FailureError exception) -> Failure
+      def check_failure: (untyped error, ::Hash[Symbol, untyped] details, ?origin: untyped) -> void
+      def failure_problem: (untyped error, ::Hash[Symbol, untyped] details) -> ::String?
+      def detail_problem: (untyped error, ::Hash[Symbol, untyped] types, ::Hash[Symbol, untyped] details) -> ::String?
+    end
+  end
+end

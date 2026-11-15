@@ -1,0 +1,28 @@
+module Mu
+  module Action
+    type props_recording = bool | ::Hash[Symbol, ::Array[Symbol]]
+
+    module Metadata : _ActionInstance
+      @meta: ::Hash[untyped, untyped]
+
+      def self.included: (untyped base) -> void
+
+      module ClassMethods
+        def record_props: (?bool enabled, ?only: (Symbol | ::Array[Symbol])?, ?except: (Symbol | ::Array[Symbol])?) -> props_recording
+        def props_recording: () -> props_recording
+        def build_props_recording: (bool enabled, (Symbol | ::Array[Symbol])? only, (Symbol | ::Array[Symbol])? except) -> props_recording
+      end
+
+      module Lifecycle : Object, ClassMethods
+        include Literal::Properties
+
+        def new: (*untyped, **untyped) -> untyped
+        def inherited: (untyped subclass) -> void
+      end
+
+      def initialize: (*untyped, **untyped) -> void
+      def initialize_meta: () -> void
+      def recorded_props: () -> ::Hash[Symbol, untyped]?
+    end
+  end
+end
