@@ -20,6 +20,9 @@ much as correctness.
 - **Public API**: any change to `call`, `call!`, `Success`, `Failure`, `result`,
   `failure`, the hooks, `record_props`, `context`, `meta`, or the `Result` classes.
   Is it breaking? Is it marked `!` with a `Breaking` changelog entry?
+- **Constants**: a constant defined under `Mu::Action` hides the application's
+  top-level constant of the same name inside every action class. Is a new one
+  needed, and is it in the README's list and in the spec that pins it?
 - **Class-level state and inheritance**: hooks, declared failures, and prop recording
   live on the class and are copied in each feature's `inherited`. New class-level
   state must be copied too, and a subclass must not modify its parent.

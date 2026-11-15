@@ -4,6 +4,9 @@ module Mu
   module Action
     # The before, after and around hooks of an action: their registration on
     # the class and their execution around the call.
+    #
+    # @api private Applications use what this module adds to action classes,
+    #   never the module itself.
     module Hooks
       def self.included(base)
         base.extend(ClassMethods)
@@ -11,6 +14,8 @@ module Mu
       end
 
       # Class methods that register hooks, as blocks or as method names.
+      #
+      # @api public
       module ClassMethods
         def around(*method_names, &block) = register_hook(around_hooks, method_names, block, name: :around)
         def before(*method_names, &block) = register_hook(before_hooks, method_names, block, name: :before)

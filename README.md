@@ -66,6 +66,8 @@ A `Success` result contains the `value` returned by the interactor, while a `Fai
 
 A failure will return immediately.
 
+Inside an action class, the constants of `Mu::Action` come before top-level constants with the same name: `Result`, `Success`, `Failure`, `FailureError`, `Context`, `Metadata`, `Hooks`, `Failures`, `ClassMethods`, `VERSION` and `CONTEXT_KEY`. If your application has its own `Result` or `Context` class, for example, write `::Result` or `::Context` inside an action.
+
 ### Calling Interactors
 
 Interactors can be called in two ways:

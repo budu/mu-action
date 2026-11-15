@@ -2,7 +2,12 @@ module Mu
   module Action : Object, Context, Metadata, Hooks, Failures
     VERSION: ::String
 
-    extend Configuration
+    type failure_handler = :raise | ^(untyped action, untyped error, ::Hash[Symbol, untyped] details) -> untyped
+
+    self.@on_undeclared_failure: failure_handler
+
+    def self.on_undeclared_failure: () -> failure_handler
+    def self.on_undeclared_failure=: (failure_handler handler) -> failure_handler
 
     interface _ActionInstance
       def meta: () -> ::Hash[untyped, untyped]

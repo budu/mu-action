@@ -11,7 +11,7 @@ The README documents the public API.
 | Path                 | Purpose                                                              |
 |----------------------|----------------------------------------------------------------------|
 | `lib/mu/action.rb`   | Entry point: wiring, `call`, `call!`, `run`, `Success`, `Failure`, `result` |
-| `lib/mu/action/`     | One file per feature: `hooks`, `failures`, `metadata`, `context`, `result`, `failure_error`, `configuration` |
+| `lib/mu/action/`     | One file per feature: `hooks`, `failures`, `metadata`, `context`, `result`, `failure_error` |
 | `sig/mu/`            | RBS signatures shipped with the gem, one file per library file       |
 | `sig/*.rbs`          | Local stubs for Steep (Kernel, Literal), not shipped                 |
 | `spec/`              | RSpec examples, mirroring `lib/`                                     |
@@ -56,6 +56,10 @@ A change is complete when:
 - Write for the minimum Ruby version of the gemspec.
 - File paths match constant names: `Mu::Action::Foo` lives in `lib/mu/action/foo.rb`.
   The exception is `result.rb`, which holds `Result`, `Success` and `Failure`.
+- An action class resolves every constant of `Mu::Action` by its bare name, ahead of
+  the application's top-level constants. Adding a constant under `Mu::Action` takes
+  that name from applications: avoid it when a method will do, update the list in the
+  README, and update the spec that pins it.
 - A feature is one module in one file. Its class methods are in a nested
   `ClassMethods` module that it extends onto the action class. What it must do when
   a class is subclassed or instantiated is in a nested `Inheritance` or `Lifecycle`
