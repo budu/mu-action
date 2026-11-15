@@ -4,6 +4,9 @@ module Mu
   module Action
     # The metadata of an action: diagnostic information such as its class and
     # the values of its props, carried over to its result.
+    #
+    # @api private Applications use what this module adds to action classes,
+    #   never the module itself.
     module Metadata
       def self.included(base)
         base.extend(ClassMethods)
@@ -15,6 +18,8 @@ module Mu
       end
 
       # Class methods that choose which props are recorded in the metadata.
+      #
+      # @api public
       module ClassMethods
         # Chooses which props are recorded in meta[:props]: all of them (the
         # default), none, or a subset.

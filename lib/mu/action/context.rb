@@ -8,6 +8,9 @@ module Mu
 
     # The context of an action: what its caller says about who is calling and
     # from where. An action called by another one inherits its context.
+    #
+    # @api private Applications use what this module adds to action classes,
+    #   never the module itself.
     module Context
       def self.included(base)
         # The context defaults to the one of the action that is running, if any.

@@ -36,6 +36,31 @@ RSpec.describe Mu::Action do
     end
   end
 
+  # An action class resolves the constants of Mu::Action by their bare name,
+  # ahead of the application's top-level constants, so each constant added
+  # there is a name applications can no longer use unqualified in an action.
+  describe "constants seen by action classes" do
+    it "are a known list" do
+      expect(Mu::Action.constants).to contain_exactly(
+        :CONTEXT_KEY, :ClassMethods, :Context, :Failure, :FailureError, :Failures,
+        :Hooks, :Metadata, :Result, :Success, :VERSION
+      )
+    end
+
+    it "do not hide an application's Configuration" do
+      application_constant = stub_const("Configuration", Module.new)
+
+      expect(action_class.class_eval("Configuration", __FILE__, __LINE__)).to be(application_constant)
+    end
+
+    it "let an application reach its own constant with a leading ::" do
+      application_constant = stub_const("Result", Class.new)
+
+      expect(action_class.class_eval("Result", __FILE__, __LINE__)).to be(Mu::Action::Result)
+      expect(action_class.class_eval("::Result", __FILE__, __LINE__)).to be(application_constant)
+    end
+  end
+
   describe "including Mu::Action again" do
     it "changes nothing in the same class" do
       action_class.before { meta[:hooked] = true }

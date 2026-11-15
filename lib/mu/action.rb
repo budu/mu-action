@@ -3,7 +3,6 @@
 require "literal"
 
 require_relative "action/version"
-require_relative "action/configuration"
 require_relative "action/failure_error"
 require_relative "action/result"
 require_relative "action/context"
@@ -14,8 +13,25 @@ require_relative "action/failures"
 module Mu
   # Provides an interactor pattern implementation with hooks, metadata tracking,
   # and result wrapping.
+  #
+  # An action class resolves the constants defined here by their bare name,
+  # ahead of the application's top-level constants, so each constant added
+  # under Mu::Action is a name applications can no longer use unqualified.
   module Action
-    extend Configuration
+    class << self
+      # How an action handles a failure that its declarations don't allow:
+      # +:raise+ (the default) raises an ArgumentError, while a callable is
+      # called with the action, the error code and the details.
+      attr_reader :on_undeclared_failure
+
+      def on_undeclared_failure=(handler)
+        unless handler == :raise || handler.respond_to?(:call)
+          raise ArgumentError, "on_undeclared_failure must be :raise or respond to #call"
+        end
+
+        @on_undeclared_failure = handler
+      end
+    end
 
     self.on_undeclared_failure = :raise
 

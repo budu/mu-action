@@ -5,6 +5,9 @@ module Mu
     # The failures of an action: their declaration on the class, the check of
     # each failure against the declarations, and the Failure result built
     # from a FailureError.
+    #
+    # @api private Applications use what this module adds to action classes,
+    #   never the module itself.
     module Failures
       def self.included(base)
         base.extend(ClassMethods)
@@ -12,6 +15,8 @@ module Mu
       end
 
       # Class methods that declare and list the failures of an action.
+      #
+      # @api public
       module ClassMethods
         # Declares the failures this action can return. Once an action declares
         # any, other failures are handled by Mu::Action.on_undeclared_failure.
