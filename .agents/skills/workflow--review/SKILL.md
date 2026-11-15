@@ -23,8 +23,11 @@ much as correctness.
 - **Class-level state and inheritance**: hooks, declared failures, and prop recording
   live on the class and are copied in each feature's `inherited`. New class-level
   state must be copied too, and a subclass must not modify its parent.
-- **Literal**: props that are added lazily, reserved prop names (`meta`, `context`),
-  and nil handling (`_Any` rejects nil; a nil `default:` means no default).
+- **Literal**: the `meta` and `context` props are declared when `Mu::Action` is
+  included and their names are reserved; nothing may change a class when it is
+  instantiated. Nil handling: `_Any` rejects nil, and a nil `default:` means no
+  default. The initializer Literal generates for a subclass with props does not call
+  `super`.
 - **Failure flow**: `Failure` raises, so code after it does not run and `after`
   hooks are skipped; nested `call!` failures become the outer failure.
 - **Context**: fiber storage must be restored on every exit path.

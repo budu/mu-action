@@ -24,9 +24,39 @@ RSpec.describe "Mu::Action metadata and property tracking" do
       )
     end
 
-    it "adds meta property automatically when the class is instantiated" do
-      action_class.new(name: "Test") # Trigger meta property addition
+    it "declares the meta prop when Mu::Action is included" do
       expect(action_class.literal_properties.map(&:name)).to include(:meta)
+    end
+
+    it "does not change the class when it is instantiated" do
+      initializer = action_class.instance_method(:initialize)
+      props = action_class.literal_properties.map(&:name)
+
+      action_class.new(name: "Test")
+
+      expect(action_class.instance_method(:initialize)).to eq(initializer)
+      expect(action_class.literal_properties.map(&:name)).to eq(props)
+    end
+
+    it "initializes the metadata once, for a class and for its subclasses" do
+      calls = []
+      counting = Class.new do
+        include Mu::Action
+
+        prop :name, String
+
+        define_method(:initialize_meta) do
+          calls << self.class
+          super()
+        end
+        private :initialize_meta
+      end
+      with_prop = Class.new(counting) { prop :extra, Integer, default: 1 }
+      without_prop = Class.new(counting)
+
+      [counting, with_prop, without_prop].each { _1.new(name: "Test") }
+
+      expect(calls).to eq([counting, with_prop, without_prop])
     end
 
     it "maintains separate meta instances for different objects" do
@@ -147,6 +177,19 @@ RSpec.describe "Mu::Action metadata and property tracking" do
       expect(instance.meta).to include(request_id: "abc", class: action_class)
       expect(given).to eq(request_id: "abc")
     end
+
+    it "does not modify it from after_initialize either" do
+      marking = Class.new(action_class) do
+        private
+
+        def after_initialize = meta[:seen] = true
+      end
+      given = { request_id: "abc" }
+      instance = marking.new(name: "Test", meta: given)
+
+      expect(instance.meta).to include(request_id: "abc", seen: true)
+      expect(given).to eq(request_id: "abc")
+    end
   end
 
   describe "record_props" do
@@ -213,7 +256,7 @@ RSpec.describe "Mu::Action metadata and property tracking" do
       expect(meta_props.size).to eq(1)
     end
 
-    it "resets meta_prop_added flag for subclasses" do
+    it "gives subclasses the meta property" do
       parent_class = Class.new do
         include Mu::Action
 

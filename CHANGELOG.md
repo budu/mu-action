@@ -1,13 +1,23 @@
 ## [Unreleased]
 
-### Removed
-- Guard, its RSpec and RuboCop plugins, and the local Steep plugin (`lib/guard/steep.rb`) from the development tooling.
+### Breaking
+- Declaring a prop named `meta` or `context` raises an `ArgumentError`. In 0.3.0 such a prop was silently replaced the first time the action was instantiated.
 
 ### Changed
+- The `meta` and `context` props are declared when `Mu::Action` is included, before the action's own props. They were added the first time the class was instantiated.
 - The library is split into one file per feature under `lib/mu/action/`, and the RBS signatures follow the same layout. Behavior is unchanged. The internal modules `Initializer`, `MetaPropAdder`, `HookPropagator` and `FailureChecking` are replaced by `Context`, `Metadata`, `Hooks` and `Failures`.
 - `bin/check` is renamed `bin/ci`. It runs the checks on every supported Ruby version, using asdf, and `bin/ci --current` runs them on the current Ruby only.
 - Development dependencies updated, including json 3, prism 2, erb 6 and rdoc 8. Steep and RBS stay at 2.0 and 4.1, the last versions that support Ruby 3.2.
 - Development now follows agent skills in `.agents/skills` (commits, pull requests, changelog, dependencies, releases, reviews), and `AGENTS.md` is the single guide; `CLAUDE.md` points to it.
+
+### Removed
+- Guard, its RSpec and RuboCop plugins, and the local Steep plugin (`lib/guard/steep.rb`) from the development tooling.
+
+### Fixed
+- A prop default can read `context`, with Literal 1.8 or later. It used to get `nil` or the context depending on the order in which the classes were defined and called.
+- The metadata of an action is initialized once. It was initialized twice for a class that includes `Mu::Action` directly.
+- A subclass with no props of its own runs its parent's `initialize`.
+- A `meta:` hash passed by a caller is no longer modified by an `after_initialize` method.
 
 ## [0.3.0] - 2026-11-14
 

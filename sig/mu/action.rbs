@@ -31,6 +31,9 @@ module Mu
     module ClassMethods
       include Literal::Properties
 
+      RESERVED_PROPS: ::Array[Symbol]
+
+      def literal_properties: () -> ::Array[untyped]
       def call: (*untyped, **untyped) -> untyped
       def call!: (*untyped, **untyped) -> untyped
       def result: (untyped type) -> ::Class
