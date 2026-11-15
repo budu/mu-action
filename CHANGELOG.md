@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Breaking
+- `record_props` raises an `ArgumentError` when its first argument is not `true` or `false`. `record_props :email` used to record every prop.
 - The context is inherited by an action called directly by a running action, and no longer by a thread or a fiber started by it: pass `context:` explicitly to an action that runs in another thread or fiber. In 0.3.0 a long-lived thread first started inside an action, such as a thread pool worker, kept that action's context for all the work it did later.
 - Declaring a prop named `meta` or `context` raises an `ArgumentError`. In 0.3.0 such a prop was silently replaced the first time the action was instantiated.
 
@@ -19,6 +20,7 @@
 - A top-level `Configuration` constant is no longer hidden inside action classes: the `Mu::Action::Configuration` module is gone.
 - A prop default can read `context`. It used to get `nil` or the context depending on the order in which the classes were defined and called.
 - The metadata of an action is initialized once. It was initialized twice for a class that includes `Mu::Action` directly.
+- `record_props` accepts prop names given as strings. They were ignored, so `record_props except: %w[password]` recorded the password.
 - A subclass with no props of its own runs its parent's `initialize`.
 - A `meta:` hash passed by a caller is no longer modified by an `after_initialize` method.
 

@@ -244,6 +244,24 @@ RSpec.describe "Mu::Action metadata and property tracking" do
     it "rejects false with only: or except:" do
       expect { recording(false, only: :name) }.to raise_error(ArgumentError, /accepts no only:/)
     end
+
+    it "accepts prop names given as strings" do
+      excluding = recording(except: %w[secret]).call(name: "n", secret: "s")
+      keeping = recording(only: "name").call(name: "n", secret: "s")
+
+      expect(excluding.meta[:props]).to eq(name: "n")
+      expect(keeping.meta[:props]).to eq(name: "n")
+    end
+
+    it "rejects a first argument that is not true or false" do
+      expect { recording(:name) }
+        .to raise_error(ArgumentError, /takes true or false, got :name: name the props with only: or except:/)
+      expect { recording(nil) }.to raise_error(ArgumentError, /takes true or false, got nil/)
+    end
+
+    it "records every prop when given true" do
+      expect(recording(true).call(name: "n", secret: "s").meta[:props]).to eq(name: "n", secret: "s")
+    end
   end
 
   describe "meta property" do

@@ -27,6 +27,8 @@ module Mu
         #   record_props false
         #   record_props only: %i[site_id]
         #   record_props except: %i[payload]
+        #
+        # The names can be symbols or strings.
         def record_props(enabled = true, only: nil, except: nil) # rubocop:disable Style/OptionalBooleanParameter
           @props_recording = build_props_recording(enabled, only, except)
         end
@@ -36,14 +38,24 @@ module Mu
         private
 
         def build_props_recording(enabled, only, except)
+          unless [true, false].include?(enabled)
+            raise ArgumentError, "record_props takes true or false, got #{enabled.inspect}: " \
+                                 "name the props with only: or except:"
+          end
           raise ArgumentError, "record_props accepts only: or except:, not both" if only && except
 
           # @type var filter: ::Hash[Symbol, ::Array[Symbol]]
-          filter = { only:, except: }.compact.transform_values { Array(_1) }
+          filter = { only:, except: }.compact.transform_values { symbolize_prop_names(_1) }
           return filter.empty? || filter if enabled
           raise ArgumentError, "record_props false accepts no only: or except:" if filter.any?
 
           false
+        end
+
+        def symbolize_prop_names(names)
+          # @type var list: ::Array[untyped]
+          list = Array(names)
+          list.map(&:to_sym)
         end
       end
 

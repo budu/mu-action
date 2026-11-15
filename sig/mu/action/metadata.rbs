@@ -1,14 +1,16 @@
 module Mu
   module Action
     type props_recording = bool | ::Hash[Symbol, ::Array[Symbol]]
+    type prop_names = Symbol | String | ::Array[Symbol | String]
 
     module Metadata : _ActionInstance
       def self.included: (untyped base) -> void
 
       module ClassMethods
-        def record_props: (?bool enabled, ?only: (Symbol | ::Array[Symbol])?, ?except: (Symbol | ::Array[Symbol])?) -> props_recording
+        def record_props: (?bool enabled, ?only: prop_names?, ?except: prop_names?) -> props_recording
         def props_recording: () -> props_recording
-        def build_props_recording: (bool enabled, (Symbol | ::Array[Symbol])? only, (Symbol | ::Array[Symbol])? except) -> props_recording
+        def build_props_recording: (untyped enabled, prop_names? only, prop_names? except) -> props_recording
+        def symbolize_prop_names: (prop_names names) -> ::Array[Symbol]
       end
 
       module Lifecycle : ClassMethods
