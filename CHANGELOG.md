@@ -2,6 +2,7 @@
 
 ### Breaking
 - The context is inherited by an action called directly by a running action, and no longer by a thread or a fiber started by it: pass `context:` explicitly to an action that runs in another thread or fiber. In 0.3.0 a long-lived thread first started inside an action, such as a thread pool worker, kept that action's context for all the work it did later.
+- `failure :code, from: OtherAction` declares a detail named `from`; it no longer also takes the failures of `OtherAction`. Write `failure from: OtherAction` on its own.
 - Declaring a prop named `meta` or `context` raises an `ArgumentError`. In 0.3.0 such a prop was silently replaced the first time the action was instantiated.
 
 ### Changed
@@ -16,6 +17,8 @@
 - Guard, its RSpec and RuboCop plugins, and the local Steep plugin (`lib/guard/steep.rb`) from the development tooling.
 
 ### Fixed
+- A failure detail can be named `from`, as in `failure :invalid_transition, from: Symbol, to: Symbol`. It was taken as a `from:` action, and the first such failure raised `NoMethodError`.
+- `failure from:` raises an `ArgumentError` for anything that is not an action class, and actions that name each other in `from:` no longer overflow the stack.
 - A top-level `Configuration` constant is no longer hidden inside action classes: the `Mu::Action::Configuration` module is gone.
 - A prop default can read `context`. It used to get `nil` or the context depending on the order in which the classes were defined and called.
 - The metadata of an action is initialized once. It was initialized twice for a class that includes `Mu::Action` directly.

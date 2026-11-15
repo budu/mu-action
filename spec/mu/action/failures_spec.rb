@@ -142,6 +142,25 @@ RSpec.describe "Mu::Action failures" do
       expect { action { failure } }.to raise_error(ArgumentError, /code or from:/)
     end
 
+    it "rejects details declared without a code" do
+      expect { action { failure errors: Array } }.to raise_error(ArgumentError, /code or from:/)
+    end
+
+    it "accepts a detail named from" do
+      transition = action do
+        failure :invalid_transition, from: Symbol, to: Symbol
+
+        prop :from, Symbol
+        prop :to, Symbol
+
+        def call = Failure(:invalid_transition, from: @from, to: @to)
+      end
+
+      expect(transition.failures).to eq(invalid_transition: { from: Symbol, to: Symbol })
+      expect(transition.failure_sources).to be_empty
+      expect(transition.call(from: :draft, to: :draft).details).to eq(from: :draft, to: :draft)
+    end
+
     it "inherits declarations without sharing them" do
       parent = action { failure :parent_failure }
       child = Class.new(parent) { failure :child_failure }
@@ -234,6 +253,41 @@ RSpec.describe "Mu::Action failures" do
 
       expect(outer.failures).to eq(invalid: { errors: Array })
       expect(outer.call(inner:).error).to eq(:invalid)
+    end
+
+    it "accepts several from: actions at once" do
+      first = action { failure :first_failed }
+      second = action { failure :second_failed }
+      both = action { failure from: [first, second] }
+
+      expect(both.failures.keys).to eq(%i[first_failed second_failed])
+    end
+
+    it "rejects a from: that is not an action class" do
+      expect { action { failure from: 42 } }
+        .to raise_error(ArgumentError, /from: expects action classes, got \[42\]/)
+      expect { action { failure from: [String] } }
+        .to raise_error(ArgumentError, /from: expects action classes, got \[String\]/)
+    end
+
+    it "lists the failures of actions that name each other" do
+      first = action { failure :first_failed }
+      second = action { failure :second_failed }
+      first.failure from: second
+      second.failure from: first
+
+      expect(first.failures.keys).to contain_exactly(:first_failed, :second_failed)
+      expect(second.failures.keys).to contain_exactly(:first_failed, :second_failed)
+    end
+
+    it "lets its own declaration win over a from: action's" do
+      source = action { failure :invalid, errors: Array }
+      overriding = action do
+        failure from: source
+        failure :invalid, reason: String
+      end
+
+      expect(overriding.failures).to eq(invalid: { reason: String })
     end
 
     it "accepts any failure from a from: action that declares none" do
