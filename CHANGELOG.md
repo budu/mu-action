@@ -1,7 +1,7 @@
 ## [Unreleased]
 
 ### Breaking
-- `record_props` raises an `ArgumentError` when its first argument is not `true` or `false`. `record_props :email` used to record every prop.
+- `record_props` raises an `ArgumentError` when its first argument is not `true` or `false`, and an action raises one when it is called if `record_props` names something that is not one of its props. `record_props :email` used to record every prop, and a misspelled name in `except:` left the prop recorded.
 - The context is inherited by an action called directly by a running action, and no longer by a thread or a fiber started by it: pass `context:` explicitly to an action that runs in another thread or fiber. In 0.3.0 a long-lived thread first started inside an action, such as a thread pool worker, kept that action's context for all the work it did later.
 - Declaring a prop named `meta` or `context` raises an `ArgumentError`. In 0.3.0 such a prop was silently replaced the first time the action was instantiated.
 

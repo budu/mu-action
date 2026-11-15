@@ -28,7 +28,9 @@ module Mu
         #   record_props only: %i[site_id]
         #   record_props except: %i[payload]
         #
-        # The names can be symbols or strings.
+        # The names can be symbols or strings. Each one must be a prop of the
+        # action, and of every subclass that inherits the choice: this is checked
+        # when an action is instantiated, since props can be declared afterwards.
         def record_props(enabled = true, only: nil, except: nil) # rubocop:disable Style/OptionalBooleanParameter
           @props_recording = build_props_recording(enabled, only, except)
         end
@@ -95,10 +97,20 @@ module Mu
         end.except(:meta, :context)
 
         case recording
-        in { only: } then props.slice(*only)
-        in { except: } then props.except(*except)
+        in { only: } then props.slice(*known_props(only, props))
+        in { except: } then props.except(*known_props(except, props))
         else props
         end
+      end
+
+      # The names, once each of them is known to be a prop. A name that matches
+      # no prop would otherwise be ignored, and a misspelled name in except:
+      # would leave the prop it meant to exclude recorded.
+      def known_props(names, props)
+        unknown = names - props.keys
+        return names if unknown.empty?
+
+        raise ArgumentError, "#{self.class}: record_props names props that do not exist: #{unknown.inspect}"
       end
     end
   end

@@ -20,6 +20,7 @@ module Mu
 
       def initialize_meta: () -> void
       def recorded_props: () -> ::Hash[Symbol, untyped]?
+      def known_props: (::Array[Symbol] names, ::Hash[Symbol, untyped] props) -> ::Array[Symbol]
     end
   end
 end
