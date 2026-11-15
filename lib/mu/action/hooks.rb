@@ -13,11 +13,28 @@ module Mu
         base.singleton_class.prepend(Inheritance)
       end
 
+      # How many positional arguments a hook takes, from its parameters. A hook
+      # that takes any number of them counts as taking two.
+      def self.positional_arity(parameters)
+        return 2 if parameters.any? { |type, _| type == :rest }
+
+        parameters.count { |type, _| %i[req opt].include?(type) }
+      end
+
       # Class methods that register hooks, as blocks or as method names.
       #
       # @api public
       module ClassMethods
-        def around(*method_names, &block) = register_hook(around_hooks, method_names, block, name: :around)
+        # An around hook takes the chain, or the action and the chain, and calls
+        # the chain to continue. A method can also take nothing and yield.
+        def around(*method_names, &block)
+          if block && Hooks.positional_arity(block.parameters).zero?
+            raise ArgumentError, "an around block takes the chain, or the action and the chain"
+          end
+
+          register_hook(around_hooks, method_names, block, name: :around)
+        end
+
         def before(*method_names, &block) = register_hook(before_hooks, method_names, block, name: :before)
         def after(*method_names, &block) = register_hook(after_hooks, method_names, block, name: :after)
 
@@ -107,9 +124,10 @@ module Mu
       def build_around_wrapper(hook, previous)
         case hook
         when Proc
+          arguments = around_arguments(hook.parameters, previous)
           lambda do
             # @type var hook: ^(*untyped) -> untyped
-            instance_exec(self, previous, &hook)
+            instance_exec(*arguments, &hook)
           end
         else
           -> { invoke_around_method(hook, previous) }
@@ -117,18 +135,19 @@ module Mu
       end
 
       def invoke_around_method(hook, previous)
-        method_name = hook.to_sym
-        method_object = resolve_method(method_name)
-        arguments = around_arguments(method_object, previous)
+        method_object = resolve_method(hook.to_sym)
+        arguments = around_arguments(method_object.parameters, previous)
         method_object.bind(self).call(*arguments, &previous)
       end
 
-      def around_arguments(method_object, previous)
-        params = method_object.parameters.reject { _1.first == :block }
-        return [] if params.empty?
-        return [previous] if params.length == 1
-
-        [self, previous]
+      # The arguments of an around hook, a block or a method: the chain when it
+      # takes one, the action and the chain when it takes two.
+      def around_arguments(parameters, previous)
+        case Hooks.positional_arity(parameters)
+        when 0 then []
+        when 1 then [previous]
+        else [self, previous]
+        end
       end
 
       def resolve_method(method_name)

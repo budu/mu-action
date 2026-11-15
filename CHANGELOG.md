@@ -3,6 +3,7 @@
 ### Breaking
 - The context is inherited by an action called directly by a running action, and no longer by a thread or a fiber started by it: pass `context:` explicitly to an action that runs in another thread or fiber. In 0.3.0 a long-lived thread first started inside an action, such as a thread pool worker, kept that action's context for all the work it did later.
 - Declaring a prop named `meta` or `context` raises an `ArgumentError`. In 0.3.0 such a prop was silently replaced the first time the action was instantiated.
+- An around block that takes one parameter receives the chain, as an around method does. It used to receive the action. An around block that takes no parameter raises an `ArgumentError`, since it could not call the chain.
 
 ### Changed
 - Literal 1.9 or later is required; 1.7 and 1.8 are no longer supported. CI only tested 1.9, and on 1.7 a prop default could not read `context`.
@@ -21,6 +22,8 @@
 - The metadata of an action is initialized once. It was initialized twice for a class that includes `Mu::Action` directly.
 - A subclass with no props of its own runs its parent's `initialize`.
 - A `meta:` hash passed by a caller is no longer modified by an `after_initialize` method.
+- `around { |chain| chain.call }` no longer skips the around hooks declared after it. The block received the action, so `chain.call` ran the action directly.
+- Around hooks accept lambdas that take one parameter, and methods with keyword parameters.
 
 ## [0.3.0] - 2026-11-14
 
