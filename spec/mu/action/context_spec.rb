@@ -121,7 +121,6 @@ RSpec.describe "Mu::Action context" do
     it "is restored after the action runs" do
       outer.call(context: :ctx)
 
-      expect(Fiber[Mu::Action::CONTEXT_KEY]).to be_nil
       expect(reader.call.value).to eq([nil])
     end
 
@@ -130,7 +129,80 @@ RSpec.describe "Mu::Action context" do
 
       failing.call(context: :ctx)
 
-      expect(Fiber[Mu::Action::CONTEXT_KEY]).to be_nil
+      expect(reader.call.value).to eq([nil])
+    end
+
+    it "is restored after an exception" do
+      raising = action { def call = raise("boom") }
+
+      expect { raising.call(context: :ctx) }.to raise_error("boom")
+      expect(reader.call.value).to eq([nil])
+    end
+  end
+
+  describe "outside the call stack" do
+    # Runs the block inside an action that has the given context.
+    def running(context, &block)
+      action { define_method(:call) { Success(block.call) } }.call!(context:)
+    end
+
+    it "is not inherited by a thread started by the action" do
+      seen = running(:ctx) { Thread.new { reader.call!.first }.value }
+
+      expect(seen).to be_nil
+    end
+
+    it "is not inherited by a fiber started by the action" do
+      seen = running(:ctx) { Fiber.new { reader.call!.first }.resume }
+
+      expect(seen).to be_nil
+    end
+
+    it "can be handed to another thread explicitly" do
+      inner = reader
+      handing = action do
+        define_method(:call) { Success(Thread.new { inner.call!(context:).first }.value) }
+      end
+
+      expect(handing.call!(context: :ctx)).to eq(:ctx)
+    end
+
+    it "does not stay on a thread that outlives the action" do
+      jobs = Queue.new
+      worker = nil
+      on_worker = lambda do |&job|
+        worker ||= Thread.new { loop { jobs.pop.then { |task, out| out << task.call } } }
+        jobs << [job, out = Queue.new]
+        out.pop
+      end
+
+      running({ actor: "alice" }) { on_worker.call { reader.call!.first } }
+
+      expect(running({ actor: "bob" }) { on_worker.call { reader.call!.first } }).to be_nil
+      expect(on_worker.call { reader.call!.first }).to be_nil
+    ensure
+      worker&.kill
+    end
+
+    it "is kept apart between threads that run actions at the same time" do
+      inner = reader
+      ready = Queue.new
+      waiting = action do
+        prop :gate, Queue
+
+        define_method(:call) do
+          ready << true
+          @gate.pop
+          Success(inner.call!.first)
+        end
+      end
+      gates = { a: Queue.new, b: Queue.new }
+      threads = gates.map { |name, gate| Thread.new { waiting.call!(context: name, gate:) } }
+
+      2.times { ready.pop }
+      gates.each_value { _1 << true }
+
+      expect(threads.map(&:value)).to eq(%i[a b])
     end
   end
 end

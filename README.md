@@ -329,6 +329,28 @@ assert result.meta[:archived_by] == "jane"
 
 Interactors called by another one inherit its context, so a hook in a nested interactor sees the same actor. Pass `context:` explicitly to override it.
 
+The context follows the call stack: an interactor inherits it when it is called directly by an interactor that is running. A thread or a fiber started by an interactor does not inherit it, so hand it over explicitly:
+
+```ruby
+class WhoIsActing
+  include Mu::Action
+
+  def call = Success(context && context[:actor])
+end
+
+class ActInBackground
+  include Mu::Action
+
+  def call
+    inherited = Thread.new { WhoIsActing.call! }.value
+    handed_over = Thread.new { WhoIsActing.call!(context:) }.value
+    Success([inherited, handed_over])
+  end
+end
+
+assert ActInBackground.call!(context: { actor: "jane" }) == [nil, "jane"]
+```
+
 `context` and `meta` are reserved prop names: declaring a prop with one of them raises an `ArgumentError`. The context is set before the other props, so a prop default can read it:
 
 ```ruby

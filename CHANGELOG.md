@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Breaking
+- The context is inherited by an action called directly by a running action, and no longer by a thread or a fiber started by it: pass `context:` explicitly to an action that runs in another thread or fiber. In 0.3.0 a long-lived thread first started inside an action, such as a thread pool worker, kept that action's context for all the work it did later.
 - Declaring a prop named `meta` or `context` raises an `ArgumentError`. In 0.3.0 such a prop was silently replaced the first time the action was instantiated.
 
 ### Changed
