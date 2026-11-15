@@ -327,7 +327,7 @@ assert result.meta[:archived_by] == "jane"
 
 Interactors called by another one inherit its context, so a hook in a nested interactor sees the same actor. Pass `context:` explicitly to override it.
 
-`context` and `meta` are reserved prop names: declaring a prop with one of them raises an `ArgumentError`. The context is set before the other props, so a prop default can read it (with Literal 1.8 or later):
+`context` and `meta` are reserved prop names: declaring a prop with one of them raises an `ArgumentError`. The context is set before the other props, so a prop default can read it:
 
 ```ruby
 class Greet

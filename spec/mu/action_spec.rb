@@ -234,8 +234,7 @@ RSpec.describe Mu::Action do
       expect { declaring(:context, parent:) }.to raise_error(ArgumentError, /context prop is reserved/)
     end
 
-    # Literal has prop? since 1.9.
-    it "rejects them when declared with prop?", if: Literal::Properties.method_defined?(:prop?) do
+    it "rejects them when declared with prop?" do
       expect { declaring(:meta) { prop? :meta, Hash } }.to raise_error(ArgumentError, /meta prop is reserved/)
     end
 

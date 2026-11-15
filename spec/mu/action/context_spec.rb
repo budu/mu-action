@@ -47,8 +47,7 @@ RSpec.describe "Mu::Action context" do
     expect(action { def call = Success(:ok) }.literal_properties.map(&:name)).to include(:context)
   end
 
-  # Literal evaluates prop defaults in the action since 1.8.
-  describe "in the default of another prop", if: Gem::Version.new(Literal::VERSION) >= Gem::Version.new("1.8") do
+  describe "in the default of another prop" do
     def localized(parent = nil)
       Class.new(parent || Object) do
         include Mu::Action unless parent
