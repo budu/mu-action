@@ -2,30 +2,35 @@
 
 module Mu
   module Action
-    # Fiber storage key holding the context of the running action, inherited
-    # by the actions it calls.
+    # Fiber-local key holding the context of the running action.
     CONTEXT_KEY = :mu_action_context
 
     # The context of an action: what its caller says about who is calling and
     # from where. An action called by another one inherits its context.
+    #
+    # The context of the running action is kept in a fiber-local variable, so
+    # it follows the call stack and nothing else: a thread or a fiber started
+    # by an action does not see it. Storage that new threads inherit would
+    # give a thread pool worker the context of whichever action happened to
+    # start it, for all the work it does later.
     #
     # @api private Applications use what this module adds to action classes,
     #   never the module itself.
     module Context
       def self.included(base)
         # The context defaults to the one of the action that is running, if any.
-        base.prop :context, base._Nilable(base._Any), default: -> { Fiber[CONTEXT_KEY] }
+        base.prop :context, base._Nilable(base._Any), default: -> { Thread.current[CONTEXT_KEY] }
         base.attr_reader :context
       end
 
       protected
 
       def with_context
-        previous = Fiber[CONTEXT_KEY]
-        Fiber[CONTEXT_KEY] = context
+        previous = Thread.current[CONTEXT_KEY]
+        Thread.current[CONTEXT_KEY] = context
         yield
       ensure
-        Fiber[CONTEXT_KEY] = previous
+        Thread.current[CONTEXT_KEY] = previous
       end
     end
   end

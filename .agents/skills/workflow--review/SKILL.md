@@ -33,7 +33,9 @@ much as correctness.
   `super`.
 - **Failure flow**: `Failure` raises, so code after it does not run and `after`
   hooks are skipped; nested `call!` failures become the outer failure.
-- **Context**: fiber storage must be restored on every exit path.
+- **Context**: it is kept in a fiber-local variable and restored on every exit path.
+  Nothing may pass it to another thread or fiber implicitly: a thread pool worker
+  would keep the context of the action that started it.
 - **Ruby versions**: syntax and standard library use must work on the minimum
   version in the gemspec.
 - **Signatures and docs**: the RBS files under `sig/mu/` and the README match the code; README
