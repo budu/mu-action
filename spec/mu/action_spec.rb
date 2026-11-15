@@ -36,6 +36,25 @@ RSpec.describe Mu::Action do
     end
   end
 
+  describe "including Mu::Action again" do
+    it "changes nothing in the same class" do
+      action_class.before { meta[:hooked] = true }
+      props = action_class.literal_properties.map(&:name)
+
+      action_class.include(Mu::Action)
+
+      expect(action_class.literal_properties.map(&:name)).to eq(props)
+      expect(action_class.call(name: "Test").meta).to include(hooked: true)
+    end
+
+    it "changes nothing in a subclass" do
+      subclass = Class.new(action_class) { include Mu::Action }
+
+      expect(subclass.literal_properties.map(&:name)).to eq(action_class.literal_properties.map(&:name))
+      expect(subclass.call!(name: "Test")).to eq(action_class.call!(name: "Test"))
+    end
+  end
+
   describe ".call" do
     it "returns successful result" do
       result = action_class.call(name: "Alice")
@@ -174,6 +193,67 @@ RSpec.describe Mu::Action do
 
       expect(instance.instance_variable_get(:@base_prop)).to eq("base")
       expect(instance.instance_variable_get(:@child_prop)).to eq("child")
+    end
+
+    it "runs the parent's initialize in a subclass without props" do
+      parent = Class.new do
+        include Mu::Action
+
+        prop :amount, Integer
+
+        def initialize(...)
+          super
+          @cents = @amount * 100
+        end
+
+        def call = Success(@cents)
+      end
+
+      expect(Class.new(parent).call!(amount: 2)).to eq(200)
+    end
+  end
+
+  describe "reserved props" do
+    def declaring(name, parent: nil, &declaration)
+      declaration ||= proc { prop name, String }
+      Class.new(parent || Object) do
+        include Mu::Action unless parent
+
+        class_eval(&declaration)
+      end
+    end
+
+    it "rejects a prop named meta or context" do
+      expect { declaring(:meta) }.to raise_error(ArgumentError, /the meta prop is reserved by Mu::Action/)
+      expect { declaring(:context) }.to raise_error(ArgumentError, /the context prop is reserved by Mu::Action/)
+    end
+
+    it "rejects them in a subclass" do
+      parent = Class.new { include Mu::Action }
+
+      expect { declaring(:context, parent:) }.to raise_error(ArgumentError, /context prop is reserved/)
+    end
+
+    # Literal has prop? since 1.9.
+    it "rejects them when declared with prop?", if: Literal::Properties.method_defined?(:prop?) do
+      expect { declaring(:meta) { prop? :meta, Hash } }.to raise_error(ArgumentError, /meta prop is reserved/)
+    end
+
+    it "rejects a class that declared one before including Mu::Action" do
+      early = proc do
+        Class.new do
+          extend Literal::Properties
+
+          prop :context, String
+          include Mu::Action
+        end
+      end
+
+      expect(&early).to raise_error(ArgumentError, /context prop is reserved/)
+    end
+
+    it "accepts other prop names" do
+      expect(declaring(:metadata).literal_properties.map(&:name)).to include(:metadata)
     end
   end
 

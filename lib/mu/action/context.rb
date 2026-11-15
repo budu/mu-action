@@ -10,20 +10,9 @@ module Mu
     # from where. An action called by another one inherits its context.
     module Context
       def self.included(base)
-        base.singleton_class.prepend(Lifecycle)
+        # The context defaults to the one of the action that is running, if any.
+        base.prop :context, base._Nilable(base._Any), default: -> { Fiber[CONTEXT_KEY] }
         base.attr_reader :context
-      end
-
-      # Adds the context prop the first time an action class is instantiated.
-      # It defaults to the context of the action that is running, if any.
-      module Lifecycle
-        def new(...)
-          unless @context_prop_added
-            prop :context, _Nilable(_Any), default: -> { Fiber[CONTEXT_KEY] }
-            @context_prop_added = true
-          end
-          super
-        end
       end
 
       protected

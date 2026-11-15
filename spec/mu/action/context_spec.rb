@@ -43,6 +43,37 @@ RSpec.describe "Mu::Action context" do
     expect(reader.call.meta).not_to have_key(:context)
   end
 
+  it "is declared when Mu::Action is included" do
+    expect(action { def call = Success(:ok) }.literal_properties.map(&:name)).to include(:context)
+  end
+
+  # Literal evaluates prop defaults in the action since 1.8.
+  describe "in the default of another prop", if: Gem::Version.new(Literal::VERSION) >= Gem::Version.new("1.8") do
+    def localized(parent = nil)
+      Class.new(parent || Object) do
+        include Mu::Action unless parent
+
+        prop :locale, Symbol, default: -> { context ? context[:locale] : :en }
+
+        def call = Success(@locale)
+      end
+    end
+
+    it "is available" do
+      expect(localized.call!(context: { locale: :fr })).to eq(:fr)
+      expect(localized.call!).to eq(:en)
+    end
+
+    it "is available in a subclass, whether or not the parent was called first" do
+      fresh_parent = action { def call = Success(:ok) }
+      called_parent = action { def call = Success(:ok) }
+      called_parent.call
+
+      expect(localized(fresh_parent).call!(context: { locale: :fr })).to eq(:fr)
+      expect(localized(called_parent).call!(context: { locale: :fr })).to eq(:fr)
+    end
+  end
+
   describe "nested actions" do
     let(:outer) do
       inner_class = reader

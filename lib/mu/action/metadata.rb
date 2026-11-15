@@ -8,6 +8,9 @@ module Mu
       def self.included(base)
         base.extend(ClassMethods)
         base.singleton_class.prepend(Lifecycle)
+        # The coercion copies the hash, so that one given by the caller is
+        # never modified.
+        base.prop(:meta, Hash, default: -> { {} }, &:dup) # steep:ignore UnannotatedEmptyCollection
         base.attr_reader :meta
       end
 
@@ -39,18 +42,15 @@ module Mu
         end
       end
 
-      # Adds the meta prop the first time an action class is instantiated,
-      # initializes the metadata of each new action, and passes the props
+      # Initializes the metadata of each new action, and passes the props
       # recording of a class on to its subclasses.
       module Lifecycle
+        # The metadata is initialized here and not in #initialize, because the
+        # initializer that Literal generates for a subclass with its own props
+        # does not call super.
         def new(...)
-          unless @meta_prop_added
-            prop :meta, Hash, default: -> { {} } # steep:ignore UnannotatedEmptyCollection
-            @meta_prop_added = true
-          end
           instance = super
-          # Ensure meta is initialized for this specific class
-          instance.send(:initialize_meta) if instance.respond_to?(:initialize_meta, true)
+          instance.send(:initialize_meta)
           instance
         end
 
@@ -60,15 +60,9 @@ module Mu
         end
       end
 
-      def initialize(...)
-        super
-        initialize_meta
-      end
-
       private
 
       def initialize_meta
-        @meta = meta.dup
         meta[:class] = self.class
         props = recorded_props
         meta[:props] = props if props

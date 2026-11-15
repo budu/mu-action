@@ -5,12 +5,6 @@ module Mu
     module Context : _ActionInstance
       def self.included: (untyped base) -> void
 
-      module Lifecycle
-        include Literal::Properties
-
-        def new: (*untyped, **untyped) -> untyped
-      end
-
       def with_context: [T] () { () -> T } -> T
     end
   end

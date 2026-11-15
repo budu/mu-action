@@ -327,6 +327,21 @@ assert result.meta[:archived_by] == "jane"
 
 Interactors called by another one inherit its context, so a hook in a nested interactor sees the same actor. Pass `context:` explicitly to override it.
 
+`context` and `meta` are reserved prop names: declaring a prop with one of them raises an `ArgumentError`. The context is set before the other props, so a prop default can read it (with Literal 1.8 or later):
+
+```ruby
+class Greet
+  include Mu::Action
+
+  prop :locale, Symbol, default: -> { context ? context[:locale] : :en }
+
+  def call = Success(@locale == :fr ? "Bonjour" : "Hello")
+end
+
+assert Greet.call!(context: { locale: :fr }) == "Bonjour"
+assert Greet.call! == "Hello"
+```
+
 ## Differences from the Interactor Gem
 
 The main difference and the motivation for creating `Mu::Action` is to separate the context into inputs, an output, and metadata. This allows for a more structured approach to handling business logic, making it easier to reason about the flow of data and the state of the application.

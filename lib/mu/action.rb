@@ -20,13 +20,17 @@ module Mu
     self.on_undeclared_failure = :raise
 
     def self.included(base)
+      # Ruby calls this hook each time, so including Mu::Action again, in the
+      # same class or in a subclass, must change nothing.
+      return if base.singleton_class.include?(ClassMethods)
+
       base.class_eval do
         extend Literal::Properties
         extend ClassMethods
-        # Context comes before Metadata, so that the meta prop is declared
-        # before the context prop when the class is first instantiated.
-        include Context
+        # Metadata and Context declare the meta and context props here, before
+        # the props of the action itself.
         include Metadata
+        include Context
         include Hooks
         include Failures
       end
@@ -35,6 +39,18 @@ module Mu
     # Class methods added to action classes when including Mu::Action: the
     # entry points and the result type definition.
     module ClassMethods
+      # The props that Mu::Action declares itself. An action cannot declare a
+      # prop with one of these names.
+      RESERVED_PROPS = %i[meta context].freeze
+
+      def prop(name, ...)
+        if RESERVED_PROPS.include?(name) && literal_properties.any? { _1.name == name }
+          raise ArgumentError, "#{self}: the #{name} prop is reserved by Mu::Action"
+        end
+
+        super
+      end
+
       def call(...) = new(...).run
 
       def call!(...)
