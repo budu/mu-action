@@ -211,7 +211,7 @@ RSpec.describe "Mu::Action failures" do
       action do
         class_eval(&declarations) if declarations
         prop :inner, Class
-        define_method(:call) { @inner.call!(secret: "s3cret") }
+        define_method(:call) { Success(@inner.call!(secret: "s3cret")) }
       end
     end
 
@@ -237,7 +237,7 @@ RSpec.describe "Mu::Action failures" do
       top = action do
         prop :middle, Class
         prop :inner, Class
-        def call = @middle.call!(inner: @inner)
+        def call = Success(@middle.call!(inner: @inner))
       end
 
       result = top.call(middle:, inner:)

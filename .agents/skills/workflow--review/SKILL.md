@@ -33,6 +33,9 @@ much as correctness.
   `super`.
 - **Failure flow**: `Failure` raises, so code after it does not run and `after`
   hooks are skipped; nested `call!` failures become the outer failure.
+- **Results**: `call` and the around hooks must return the `Success` the action
+  built, checked by identity of its `meta`. Another action's `Failure` is raised as
+  `call!` would; anything else is a `TypeError`.
 - **Context**: it is kept in a fiber-local variable and restored on every exit path.
   Nothing may pass it to another thread or fiber implicitly: a thread pool worker
   would keep the context of the action that started it.

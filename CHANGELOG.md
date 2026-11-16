@@ -1,6 +1,8 @@
 ## [Unreleased]
 
 ### Breaking
+- `call` must return the `Success(...)` it built, or call `Failure(...)`; so must an around hook, which can also return the result of the chain. Anything else raises a `TypeError`. A raw value used to be returned as the result, without the `result` type being checked, and the last expression of an around hook replaced the result. To use another action's value, write `Success(Other.call!(...))`.
+- A `Failure` of another action returned from `call` becomes the failure of the action, as with `call!`: around hooks see an exception, `after` hooks are skipped and the declared failures are checked. It used to be returned as it was.
 - `record_props` raises an `ArgumentError` when its first argument is not `true` or `false`, and an action raises one when it is called if `record_props` names something that is not one of its props. `record_props :email` used to record every prop, and a misspelled name in `except:` left the prop recorded.
 - The context is inherited by an action called directly by a running action, and no longer by a thread or a fiber started by it: pass `context:` explicitly to an action that runs in another thread or fiber. In 0.3.0 a long-lived thread first started inside an action, such as a thread pool worker, kept that action's context for all the work it did later.
 - `failure :code, from: OtherAction` declares a detail named `from`; it no longer also takes the failures of `OtherAction`. Write `failure from: OtherAction` on its own.

@@ -163,7 +163,7 @@ RSpec.describe "Mu::Action hooks" do
     it "can short-circuit execution in around hooks" do
       action_class.around do |action, chain|
         if action.instance_variable_get(:@name) == "skip"
-          "Skipped execution"
+          Success("Skipped execution")
         else
           chain.call
         end
@@ -174,6 +174,40 @@ RSpec.describe "Mu::Action hooks" do
 
       expect(normal_result).to eq("Hello normal")
       expect(skipped_result).to eq("Skipped execution")
+    end
+
+    it "rejects an around hook that does not return a result" do
+      action_class.around do |chain|
+        chain.call
+        meta[:finished] = true
+      end
+
+      expect { action_class.call(name: "Test") }
+        .to raise_error(TypeError, /an around hook returned true\. It must return Success/)
+    end
+
+    it "does not run the after hooks when an around hook does not return a result" do
+      ran = []
+      action_class.around { |chain| chain.call && nil }
+      action_class.after { ran << :after }
+
+      expect { action_class.call(name: "Test") }.to raise_error(TypeError, /an around hook returned nil/)
+      expect(ran).to be_empty
+    end
+
+    it "turns the Failure of another action returned by an around hook into its own failure" do
+      guard = Class.new do
+        include Mu::Action
+
+        def call = Failure(:forbidden)
+      end
+      action_class.around { |_chain| guard.call }
+
+      result = action_class.call(name: "Test")
+
+      expect(result.error).to eq(:forbidden)
+      expect(result.meta[:class]).to eq(action_class)
+      expect(result.meta[:cause].meta[:class]).to eq(guard)
     end
 
     it "passes the chain to an around block that takes one parameter" do

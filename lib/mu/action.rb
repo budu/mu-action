@@ -76,8 +76,6 @@ module Mu
           value
         in Failure(error:, details:, meta:)
           raise FailureError.new(error, details:, failure: result), cause: meta[:failure_error]
-        else
-          result
         end
       end
 
@@ -107,13 +105,31 @@ module Mu
     end
 
     def run!
-      with_context { with_hooks { call } }
+      with_context { with_hooks { own_result(call, "call") } }
     end
 
     private
 
     def call
       raise NotImplementedError, "You must implement the call method"
+    end
+
+    # The result of the action: the Success it built with Success(...).
+    #
+    # A Failure can only be returned by another action. It is raised as the
+    # FailureError of a call! would be, so that it reaches the around hooks
+    # as an exception and becomes the failure of this action.
+    def own_result(value, source)
+      return value if value.is_a?(Success) && value.meta.equal?(meta)
+      raise FailureError.new(value.error, details: value.details, failure: value) if value.is_a?(Failure)
+
+      problem =
+        if value.is_a?(Success)
+          "the result of another action. Return Success(...) with its value, as in Success(OtherAction.call!(...))"
+        else
+          "#{value.inspect}. It must return Success(...), or call Failure(...)"
+        end
+      raise TypeError, "#{self.class}: #{source} returned #{problem}"
     end
   end
 end
