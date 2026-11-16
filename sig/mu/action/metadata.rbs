@@ -3,8 +3,10 @@ module Mu
     type props_recording = bool | ::Hash[Symbol, ::Array[Symbol]]
     type prop_names = Symbol | String | ::Array[Symbol | String]
 
-    module Metadata : _ActionInstance
-      def self.included: (untyped base) -> void
+    module Metadata
+      def self.install: (untyped base) -> void
+      def self.recorded_props: (untyped action) -> ::Hash[Symbol, untyped]?
+      def self.known_props: (untyped action, ::Array[Symbol] names, ::Hash[Symbol, untyped] props) -> ::Array[Symbol]
 
       module ClassMethods : ::Class
         @props_recording: props_recording
@@ -18,10 +20,6 @@ module Mu
       module Lifecycle
         def new: (*untyped, **untyped) -> untyped
       end
-
-      def initialize_meta: () -> void
-      def recorded_props: () -> ::Hash[Symbol, untyped]?
-      def known_props: (::Array[Symbol] names, ::Hash[Symbol, untyped] props) -> ::Array[Symbol]
     end
   end
 end

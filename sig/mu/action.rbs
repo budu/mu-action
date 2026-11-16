@@ -1,5 +1,5 @@
 module Mu
-  module Action : Object, Context, Metadata, Hooks, Failures
+  module Action : Object
     VERSION: ::String
 
     type failure_handler = :raise | ^(untyped action, untyped error, ::Hash[Symbol, untyped] details) -> untyped
@@ -8,33 +8,8 @@ module Mu
 
     def self.on_undeclared_failure: () -> failure_handler
     def self.on_undeclared_failure=: (failure_handler handler) -> failure_handler
-
-    interface _ActionInstance
-      def meta: () -> ::Hash[untyped, untyped]
-      def context: () -> untyped
-      def class: () -> _ActionClass
-      def run: () -> ::Mu::Action::Result
-      def run!: () -> ::Mu::Action::Result
-      def own_result: (untyped value, ::String source) -> ::Mu::Action::Success
-    end
-
-    interface _ActionClass
-      def literal_properties: () -> ::Array[untyped]
-      def before_hooks: () -> ::Array[untyped]
-      def after_hooks: () -> ::Array[untyped]
-      def around_hooks: () -> ::Array[untyped]
-      def declares_failures?: () -> bool
-      def failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
-      def own_failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
-      def failure_sources: () -> ::Array[_ActionClass]
-      def failure_lineage: (?::Array[untyped] seen) -> ::Array[untyped]
-      def props_recording: () -> props_recording
-      def const_get: (Symbol) -> ::Class
-      def instance_method: (Symbol) -> UnboundMethod
-      def new: (*untyped, **untyped) -> _ActionInstance
-    end
-
     def self.included: (untyped base) -> void
+    def self.own_result: (untyped action, untyped value, ::String source) -> Success
 
     module ClassMethods
       include Literal::Properties
@@ -46,14 +21,19 @@ module Mu
       def call!: (*untyped, **untyped) -> untyped
       def result: (untyped type) -> ::Class
       def const_set: (Symbol, ::Class) -> ::Class
-      def new: (*untyped, **untyped) -> _ActionInstance
+      def new: (*untyped, **untyped) -> untyped
     end
 
+    @meta: ::Hash[untyped, untyped]
+    @context: untyped
+
+    def meta: () -> ::Hash[untyped, untyped]
+    def context: () -> untyped
     def Success: (?untyped value) -> Success
     def Failure: (untyped error, **untyped) -> bot
     def run: () -> Result
     def run!: () -> Result
     def call: () -> untyped
-    def own_result: (untyped value, ::String source) -> Success
+    def initialize_meta: () -> void
   end
 end

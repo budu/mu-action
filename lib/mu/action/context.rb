@@ -17,17 +17,16 @@ module Mu
     # @api private Applications use what this module adds to action classes,
     #   never the module itself.
     module Context
-      def self.included(base)
+      def self.install(base)
         # The context defaults to the one of the action that is running, if any.
         base.prop :context, base._Nilable(base._Any), default: -> { Thread.current[CONTEXT_KEY] }
-        base.attr_reader :context
       end
 
-      protected
-
-      def with_context
+      # Runs the block with the context of the action as the one that the
+      # actions it calls inherit.
+      def self.with(action)
         previous = Thread.current[CONTEXT_KEY]
-        Thread.current[CONTEXT_KEY] = context
+        Thread.current[CONTEXT_KEY] = action.context
         yield
       ensure
         Thread.current[CONTEXT_KEY] = previous

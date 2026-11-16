@@ -40,16 +40,30 @@ module Mu
       # same class or in a subclass, must change nothing.
       return if base.singleton_class.include?(ClassMethods)
 
-      base.class_eval do
-        extend Literal::Properties
-        extend ClassMethods
-        # Metadata and Context declare the meta and context props here, before
-        # the props of the action itself.
-        include Metadata
-        include Context
-        include Hooks
-        include Failures
-      end
+      base.extend(Literal::Properties)
+      base.extend(ClassMethods)
+      # Metadata and Context declare the meta and context props here, before
+      # the props of the action itself.
+      [Metadata, Context, Hooks, Failures].each { _1.install(base) }
+    end
+
+    # The Success an action built, which is what its call and its around hooks
+    # must return. A Failure can only be returned by another action: it is
+    # raised as the FailureError of a call! would be, so that it reaches the
+    # around hooks as an exception and becomes the failure of this action.
+    #
+    # @api private
+    def self.own_result(action, value, source)
+      return value if value.is_a?(Success) && value.meta.equal?(action.meta)
+      raise FailureError.new(value.error, details: value.details, failure: value) if value.is_a?(Failure)
+
+      problem =
+        if value.is_a?(Success)
+          "the result of another action. Return Success(...) with its value, as in Success(OtherAction.call!(...))"
+        else
+          "#{value.inspect}. It must return Success(...), or call Failure(...)"
+        end
+      raise TypeError, "#{action.class}: #{source} returned #{problem}"
     end
 
     # Class methods added to action classes when including Mu::Action: the
@@ -89,23 +103,39 @@ module Mu
       end
     end
 
+    # The methods below are all that Mu::Action adds to an action, with the
+    # call it implements. An action can override any of them and call super.
+
+    # The metadata of the action, which its result carries. It must be the
+    # same Hash on every call: hooks write to it and the result shares it.
+    def meta = @meta
+
+    # What the caller says about who is calling and from where.
+    def context = @context
+
     # rubocop:disable Naming/MethodName
+
+    # Builds the result of the action. This is what call must return.
     def Success(value = nil) = self.class.const_get(:Success).new(value, meta:)
 
+    # Fails the action: checks the failure against the declarations, then
+    # raises, so that nothing after it runs.
     def Failure(error, **details)
-      check_failure(error, details)
+      Failures.check(self, error, details)
       raise FailureError.new(error, details:)
     end
     # rubocop:enable Naming/MethodName
 
+    # Runs the action and returns its result, a Success or a Failure.
     def run
       run!
     rescue FailureError => e
-      failure_from(e)
+      Failures.result_for(self, e)
     end
 
+    # Runs the action and returns its Success, or raises a FailureError.
     def run!
-      with_context { with_hooks { own_result(call, "call") } }
+      Context.with(self) { Hooks.run(self) { Action.own_result(self, call, "call") } }
     end
 
     private
@@ -114,22 +144,13 @@ module Mu
       raise NotImplementedError, "You must implement the call method"
     end
 
-    # The result of the action: the Success it built with Success(...).
-    #
-    # A Failure can only be returned by another action. It is raised as the
-    # FailureError of a call! would be, so that it reaches the around hooks
-    # as an exception and becomes the failure of this action.
-    def own_result(value, source)
-      return value if value.is_a?(Success) && value.meta.equal?(meta)
-      raise FailureError.new(value.error, details: value.details, failure: value) if value.is_a?(Failure)
-
-      problem =
-        if value.is_a?(Success)
-          "the result of another action. Return Success(...) with its value, as in Success(OtherAction.call!(...))"
-        else
-          "#{value.inspect}. It must return Success(...), or call Failure(...)"
-        end
-      raise TypeError, "#{self.class}: #{source} returned #{problem}"
+    # Fills in the metadata when the action is built. Override it, and call
+    # super, to record something else than the props.
+    def initialize_meta
+      meta[:class] = self.class
+      props = Metadata.recorded_props(self)
+      meta[:props] = props if props
+      meta[:context] = context unless context.nil?
     end
   end
 end

@@ -9,9 +9,58 @@ module Mu
     # @api private Applications use what this module adds to action classes,
     #   never the module itself.
     module Failures
-      def self.included(base)
+      def self.install(base)
         base.extend(ClassMethods)
       end
+
+      # The Failure result of an action, from the FailureError that stopped it.
+      # When the error comes from a call!, the failure of that other action is
+      # checked against the declarations and kept as the cause.
+      def self.result_for(action, exception)
+        cause = exception.failure
+        check(action, exception.error, exception.details, origin: cause.meta[:class]) if cause
+        # @type var failure_meta: ::Hash[Symbol, untyped]
+        failure_meta = { **action.meta, failure_error: exception }
+        failure_meta[:cause] = cause if cause
+        Failure.new(exception.error, details: exception.details, meta: failure_meta)
+      end
+
+      # Checks a failure against what the action declares, and hands one that is
+      # not allowed to Mu::Action.on_undeclared_failure.
+      def self.check(action, error, details, origin: nil)
+        return unless action.class.declares_failures?
+        return if origin && action.class.failure_sources.any? { origin <= _1 }
+
+        problem = problem(action.class.failures, error, details)
+        return unless problem
+
+        case (handler = Mu::Action.on_undeclared_failure)
+        when :raise then raise ArgumentError, "#{action.class}: #{problem}"
+        else handler.call(action, error, details)
+        end
+      end
+
+      def self.problem(failures, error, details)
+        return "undeclared failure #{error.inspect}" unless failures.key?(error)
+
+        types = failures[error]
+        unexpected = details.keys - types.keys
+        return "unexpected details #{unexpected.inspect} for failure #{error.inspect}" if unexpected.any?
+
+        detail_problem(error, types, details)
+      end
+
+      def self.detail_problem(error, types, details)
+        types.each do |key, type|
+          value = details[key]
+          next if type === value # rubocop:disable Style/CaseEquality
+
+          return "detail #{key.inspect} of failure #{error.inspect} must be #{type.inspect}, got #{value.inspect}"
+        end
+        nil
+      end
+
+      private_class_method :problem, :detail_problem
 
       # Class methods that declare and list the failures of an action.
       #
@@ -84,51 +133,6 @@ module Mu
           own = (@failure_sources ||= []) #: ::Array[untyped]
           own.concat(sources)
         end
-      end
-
-      private
-
-      def failure_from(exception)
-        cause = exception.failure
-        check_failure(exception.error, exception.details, origin: cause.meta[:class]) if cause
-        # @type var failure_meta: ::Hash[Symbol, untyped]
-        failure_meta = { **meta, failure_error: exception }
-        failure_meta[:cause] = cause if cause
-        Failure.new(exception.error, details: exception.details, meta: failure_meta)
-      end
-
-      def check_failure(error, details, origin: nil)
-        return unless self.class.declares_failures?
-        return if origin && self.class.failure_sources.any? { origin <= _1 }
-
-        problem = failure_problem(error, details)
-        return unless problem
-
-        case (handler = Mu::Action.on_undeclared_failure)
-        when :raise then raise ArgumentError, "#{self.class}: #{problem}"
-        else handler.call(self, error, details)
-        end
-      end
-
-      def failure_problem(error, details)
-        failures = self.class.failures
-        return "undeclared failure #{error.inspect}" unless failures.key?(error)
-
-        types = failures[error]
-        unexpected = details.keys - types.keys
-        return "unexpected details #{unexpected.inspect} for failure #{error.inspect}" if unexpected.any?
-
-        detail_problem(error, types, details)
-      end
-
-      def detail_problem(error, types, details)
-        types.each do |key, type|
-          value = details[key]
-          next if type === value # rubocop:disable Style/CaseEquality
-
-          return "detail #{key.inspect} of failure #{error.inspect} must be #{type.inspect}, got #{value.inspect}"
-        end
-        nil
       end
     end
   end

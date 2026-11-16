@@ -178,6 +178,129 @@ RSpec.describe Mu::Action do
     end
   end
 
+  describe "the methods of an action" do
+    it "are a known list" do
+      plain = Class.new { extend Literal::Properties }.new
+      action = action_class.new(name: "Test")
+
+      expect(action.public_methods - plain.public_methods)
+        .to contain_exactly(:call, :run, :run!, :meta, :context, :Success, :Failure)
+      expect(action.protected_methods - plain.protected_methods).to be_empty
+      expect(action.private_methods - plain.private_methods).to contain_exactly(:initialize_meta)
+    end
+
+    it "leave every other name to the action" do
+      helpers = %i[with_hooks with_context check_failure failure_from resolve_method recorded_props own_result]
+      busy = Class.new do
+        include Mu::Action
+
+        before { meta[:hooked] = true }
+        around :wrap
+        failure :nope
+
+        def wrap(chain) = chain.call
+
+        def call = Success(:done)
+
+        private
+
+        helpers.each { |name| define_method(name) { |*| raise "#{name} is the action's own" } }
+      end
+
+      result = busy.call
+
+      expect(result.value).to eq(:done)
+      expect(result.meta).to include(hooked: true)
+    end
+
+    describe "when overridden" do
+      def overriding(&body)
+        Class.new do
+          include Mu::Action
+
+          prop :name, String, default: "world"
+
+          def call = Success("Hello #{@name}")
+
+          class_eval(&body)
+        end
+      end
+
+      it "run wraps the whole action and sees its result, a success or a failure" do
+        seen = []
+        wrapped = overriding do
+          define_method(:run) { super().tap { seen << _1.success? } }
+
+          def call = @name == "nobody" ? Failure(:no_one) : Success("Hello #{@name}")
+        end
+
+        wrapped.call
+        wrapped.call(name: "nobody")
+
+        expect(seen).to eq([true, false])
+      end
+
+      it "run! is what run and call! go through" do
+        counted = overriding { def run! = super.tap { meta[:through_run!] = true } }
+
+        expect(counted.call.meta).to include(through_run!: true)
+        expect(counted.call!).to eq("Hello world")
+      end
+
+      it "Success can change the value before the result is built" do
+        shouting = overriding { def Success(value = nil) = super(value.upcase) } # rubocop:disable Naming/MethodName
+
+        expect(shouting.call!).to eq("HELLO WORLD")
+      end
+
+      it "Failure can add details" do
+        detailed = overriding do
+          def Failure(error, **details) = super(error, **details, name: @name) # rubocop:disable Naming/MethodName
+
+          def call = Failure(:refused, reason: "closed")
+        end
+
+        expect(detailed.call(name: "Ann").details).to eq(reason: "closed", name: "Ann")
+      end
+
+      it "context can supply a default, which the metadata and nested actions use" do
+        nested = Class.new do
+          include Mu::Action
+
+          def call = Success(context)
+        end
+        defaulting = overriding do
+          def context = super || { actor: "system" }
+
+          define_method(:call) { Success(nested.call!) }
+        end
+
+        expect(defaulting.call.value).to eq(actor: "system")
+        expect(defaulting.call.meta[:context]).to eq(actor: "system")
+        expect(defaulting.call(context: { actor: "ann" }).value).to eq(actor: "ann")
+      end
+
+      it "meta can add to the metadata, as long as it returns the same hash" do
+        stamped = overriding { def meta = super.tap { _1[:stamped] = true } }
+
+        expect(stamped.call.meta).to include(stamped: true, class: stamped)
+      end
+
+      it "initialize_meta can record something else than the props" do
+        masked = overriding do
+          private
+
+          def initialize_meta
+            super
+            meta[:props] = { name: @name[0] }
+          end
+        end
+
+        expect(masked.call(name: "Ann").meta[:props]).to eq(name: "A")
+      end
+    end
+  end
+
   describe "what call returns" do
     def returning(&body)
       Class.new do

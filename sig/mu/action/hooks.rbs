@@ -1,8 +1,15 @@
 module Mu
   module Action
-    module Hooks : _ActionInstance
-      def self.included: (untyped base) -> void
+    module Hooks
+      def self.install: (untyped base) -> void
       def self.positional_arity: (::Array[untyped] parameters) -> Integer
+      def self.run: (untyped action) { () -> untyped } -> Success
+      def self.run_hook: (untyped action, ::Proc | ::Symbol hook) -> untyped
+      def self.around_chain: (untyped action) { () -> untyped } -> ::Proc
+      def self.around_link: (untyped action, ::Proc | ::Symbol hook, ::Proc previous) -> ::Proc
+      def self.call_around_method: (untyped action, ::Symbol hook, ::Proc previous) -> untyped
+      def self.around_arguments: (untyped action, ::Array[untyped] parameters, ::Proc previous) -> ::Array[untyped]
+      def self.around_method: (untyped action, Symbol method_name) -> UnboundMethod
 
       module ClassMethods : ::Class
         @own_hooks: ::Hash[Symbol, ::Array[untyped]]?
@@ -20,16 +27,6 @@ module Mu
         def ensure_valid_hook_inputs: (untyped method_names, ::Proc? block, name: Symbol) -> void
         def symbolize_hook_names: (untyped method_names, name: Symbol) -> ::Array[Symbol]
       end
-
-      def with_hooks: () { () -> Result } -> Result
-      def run_before_hooks: () -> ::Array[untyped]
-      def run_after_hooks: () -> ::Array[untyped]
-      def build_around_chain: () { () -> Result } -> ::Proc
-      def execute_simple_hook: (::Proc | ::Symbol) -> untyped
-      def build_around_wrapper: ((::Proc | ::Symbol), ::Proc) -> ::Proc
-      def invoke_around_method: (::Symbol, ::Proc) -> untyped
-      def around_arguments: (::Array[untyped], ::Proc) -> ::Array[untyped]
-      def resolve_method: (Symbol) -> UnboundMethod
     end
   end
 end

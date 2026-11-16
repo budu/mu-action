@@ -8,14 +8,41 @@ module Mu
     # @api private Applications use what this module adds to action classes,
     #   never the module itself.
     module Metadata
-      def self.included(base)
+      def self.install(base)
         base.extend(ClassMethods)
         base.singleton_class.prepend(Lifecycle)
         # The coercion copies the hash, so that one given by the caller is
         # never modified.
         base.prop(:meta, Hash, default: -> { {} }, &:dup) # steep:ignore UnannotatedEmptyCollection
-        base.attr_reader :meta
       end
+
+      # The props of an action to record in its metadata, by name, or nil when
+      # the action records none.
+      def self.recorded_props(action)
+        recording = action.class.props_recording
+        return if recording == false
+
+        props = action.class.literal_properties.to_h do |prop|
+          [prop.name, action.instance_variable_get(:"@#{prop.name}")] #: [Symbol, untyped]
+        end.except(:meta, :context)
+
+        case recording
+        in { only: } then props.slice(*known_props(action, only, props))
+        in { except: } then props.except(*known_props(action, except, props))
+        else props
+        end
+      end
+
+      # The names, once each of them is known to be a prop. A name that matches
+      # no prop would otherwise be ignored, and a misspelled name in except:
+      # would leave the prop it meant to exclude recorded.
+      def self.known_props(action, names, props)
+        unknown = names - props.keys
+        return names if unknown.empty?
+
+        raise ArgumentError, "#{action.class}: record_props names props that do not exist: #{unknown.inspect}"
+      end
+      private_class_method :known_props
 
       # Class methods that choose which props are recorded in the metadata.
       #
@@ -80,40 +107,6 @@ module Mu
           instance.send(:initialize_meta)
           instance
         end
-      end
-
-      private
-
-      def initialize_meta
-        meta[:class] = self.class
-        props = recorded_props
-        meta[:props] = props if props
-        meta[:context] = context unless context.nil?
-      end
-
-      def recorded_props
-        recording = self.class.props_recording
-        return if recording == false
-
-        props = self.class.literal_properties.to_h do |prop|
-          [prop.name, instance_variable_get(:"@#{prop.name}")] #: [Symbol, untyped]
-        end.except(:meta, :context)
-
-        case recording
-        in { only: } then props.slice(*known_props(only, props))
-        in { except: } then props.except(*known_props(except, props))
-        else props
-        end
-      end
-
-      # The names, once each of them is known to be a prop. A name that matches
-      # no prop would otherwise be ignored, and a misspelled name in except:
-      # would leave the prop it meant to exclude recorded.
-      def known_props(names, props)
-        unknown = names - props.keys
-        return names if unknown.empty?
-
-        raise ArgumentError, "#{self.class}: record_props names props that do not exist: #{unknown.inspect}"
       end
     end
   end

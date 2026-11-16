@@ -65,7 +65,14 @@ A change is complete when:
   that name from applications: avoid it when a method will do, update the list in the
   README, and update the spec that pins it.
 - A feature is one module in one file. Its class methods are in a nested
-  `ClassMethods` module that it extends onto the action class.
+  `ClassMethods` module, which its `install` extends onto the action class. What it
+  does to an action is a function of the module that takes the action, such as
+  `Hooks.run(action)`, never a method of the action.
+- An action gets seven methods from `Mu::Action`: `meta`, `context`, `Success`,
+  `Failure`, `run`, `run!` and the private `initialize_meta`. They are documented in
+  the README, an action may override each of them with `super`, and the library calls
+  them through the action so that an override takes effect. A spec pins the list:
+  adding a method takes its name from every application.
 - What a class declares (hooks, failures, the props recording) is stored on that class
   alone and combined with its parent's when read, through `superclass`. A subclass
   therefore follows its parent whenever the parent changes; nothing is copied when a
