@@ -27,6 +27,7 @@
 - Guard, its RSpec and RuboCop plugins, and the local Steep plugin (`lib/guard/steep.rb`) from the development tooling.
 
 ### Fixed
+- `run!` on an action called from another one is treated as `call!` is: the failure is checked against the failures the outer action declares and kept in `meta[:cause]`. It used to become the outer action's failure unchecked. `run!` now goes through `run`, and raises a `FailureError` that carries the `Failure`.
 - A failure detail can be named `from`, as in `failure :invalid_transition, from: Symbol, to: Symbol`. It was taken as a `from:` action, and the first such failure raised `NoMethodError`.
 - `failure from:` raises an `ArgumentError` for anything that is not an action class, and actions that name each other in `from:` no longer overflow the stack.
 - A top-level `Configuration` constant is no longer hidden inside action classes: the `Mu::Action::Configuration` module is gone.

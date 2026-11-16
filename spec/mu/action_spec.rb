@@ -240,11 +240,24 @@ RSpec.describe Mu::Action do
         expect(seen).to eq([true, false])
       end
 
-      it "run! is what run and call! go through" do
-        counted = overriding { def run! = super.tap { meta[:through_run!] = true } }
+      it "run is what call, call! and run! go through" do
+        counts = Hash.new(0)
+        counted = overriding { define_method(:run) { super().tap { counts[:run] += 1 } } }
 
-        expect(counted.call.meta).to include(through_run!: true)
+        counted.call
+        counted.call!
+        counted.new.run!
+
+        expect(counts[:run]).to eq(3)
+      end
+
+      it "run! is what call! goes through" do
+        counts = Hash.new(0)
+        counted = overriding { define_method(:run!) { super().tap { counts[:run!] += 1 } } }
+
         expect(counted.call!).to eq("Hello world")
+        expect(counted.call.value).to eq("Hello world")
+        expect(counts[:run!]).to eq(1)
       end
 
       it "Success can change the value before the result is built" do
