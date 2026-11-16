@@ -192,6 +192,19 @@ RSpec.describe "Mu::Action failures" do
       expect(calls).to match([[be_a(action_class), :undeclared, { info: 1 }]])
     end
 
+    it "is called for a failure of a nested action that the outer action does not allow" do
+      calls = []
+      Mu::Action.on_undeclared_failure = ->(_action, error, details) { calls << [error, details] }
+      nested = action { def call = Failure(:nested_failed, why: "no") }
+      outer = action do
+        failure :other
+        define_method(:call) { Success(nested.call!) }
+      end
+
+      expect(outer.call.error).to eq(:nested_failed)
+      expect(calls).to eq([[:nested_failed, { why: "no" }]])
+    end
+
     it "rejects other values" do
       expect { Mu::Action.on_undeclared_failure = :log }
         .to raise_error(ArgumentError, /:raise or respond to #call/)
@@ -288,6 +301,28 @@ RSpec.describe "Mu::Action failures" do
       end
 
       expect(overriding.failures).to eq(invalid: { reason: String })
+    end
+
+    it "checks its own failures once it names a from: action" do
+      source = inner
+      strict = action do
+        failure from: source
+        def call = Failure(:something_else)
+      end
+
+      expect(strict.declares_failures?).to be true
+      expect { strict.call }.to raise_error(ArgumentError, /undeclared failure :something_else/)
+    end
+
+    it "accepts the failures of a subclass of a from: action" do
+      source = action do
+        prop :secret, String
+        def call = Failure(:whatever)
+      end
+      subclass = Class.new(source)
+      outer = outer_for(subclass) { failure from: source }
+
+      expect(outer.call(inner: subclass).error).to eq(:whatever)
     end
 
     it "accepts any failure from a from: action that declares none" do

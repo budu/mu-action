@@ -102,15 +102,18 @@ RSpec.describe "Mu::Action metadata and property tracking" do
       )
     end
 
-    it "updates property tracking when properties change" do
-      instance = action_class.new(name: "Original")
-      original_props = instance.meta[:props].dup
+    it "keeps the values the props had when the action was built" do
+      changing = Class.new(action_class) do
+        def call
+          @name = "Modified"
+          Success(@name)
+        end
+      end
 
-      instance.instance_variable_set(:@name, "Modified")
+      result = changing.call(name: "Original")
 
-      # Properties are captured at initialization, so they don't auto-update
-      expect(instance.meta[:props]).to eq(original_props)
-      expect(original_props[:name]).to eq("Original")
+      expect(result.value).to eq("Modified")
+      expect(result.meta[:props]).to include(name: "Original")
     end
   end
 
@@ -390,17 +393,6 @@ RSpec.describe "Mu::Action metadata and property tracking" do
         processed_at: be_a(Time),
         result_size: 8
       )
-    end
-
-    it "preserves original property values in metadata even if instance variables change" do
-      instance = action_class.new(name: "Original")
-      instance.meta.dup
-
-      # Manually change instance variable (simulating internal modification)
-      instance.instance_variable_set(:@name, "Modified")
-
-      # Meta should still reflect original initialization values
-      expect(instance.meta[:props][:name]).to eq("Original")
     end
   end
 end
