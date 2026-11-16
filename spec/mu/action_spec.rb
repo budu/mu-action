@@ -20,22 +20,6 @@ RSpec.describe Mu::Action do
     end
   end
 
-  describe "module inclusion" do
-    it "extends the class with Literal::Properties" do
-      expect(action_class.singleton_class.included_modules).to include(Literal::Properties)
-    end
-
-    it "extends the class with ClassMethods" do
-      expect(action_class.singleton_class.included_modules).to include(Mu::Action::ClassMethods)
-    end
-
-    it "includes the feature modules" do
-      expect(action_class.included_modules).to include(
-        Mu::Action::Context, Mu::Action::Metadata, Mu::Action::Hooks, Mu::Action::Failures
-      )
-    end
-  end
-
   # An action class resolves the constants of Mu::Action by their bare name,
   # ahead of the application's top-level constants, so each constant added
   # there is a name applications can no longer use unqualified in an action.

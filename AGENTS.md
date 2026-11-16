@@ -67,7 +67,8 @@ A change is complete when:
   module that it prepends onto the singleton class, so that it runs even when an
   action class defines `inherited` or `new` without calling `super`.
 - Specs describe observable behavior and build their action classes inline with
-  `Class.new { include Mu::Action }`.
+  `Class.new { include Mu::Action }`. They run in random order, and a focused example
+  is ignored when `CI` is set, which `bin/ci` does.
 
 ## Workflow
 

@@ -23,12 +23,13 @@ RSpec.describe "Mu::Action hooks" do
     end
 
     it "executes multiple before hooks in order" do
-      action_class.before { meta[:first] = Time.now.to_f }
-      action_class.before { meta[:second] = Time.now.to_f }
+      order = []
+      action_class.before { order << :first }
+      action_class.before { order << :second }
 
-      result = action_class.call(name: "Test")
+      action_class.call(name: "Test")
 
-      expect(result.meta[:first]).to be < result.meta[:second]
+      expect(order).to eq(%i[first second])
     end
 
     it "allows access to instance variables in hooks" do
@@ -76,20 +77,43 @@ RSpec.describe "Mu::Action hooks" do
     end
 
     it "executes multiple after hooks in order" do
-      action_class.after { meta[:first_after] = Time.now.to_f }
-      action_class.after { meta[:second_after] = Time.now.to_f }
+      order = []
+      action_class.after { order << :first }
+      action_class.after { order << :second }
 
-      result = action_class.call(name: "Test")
+      action_class.call(name: "Test")
 
-      expect(result.meta[:first_after]).to be < result.meta[:second_after]
+      expect(order).to eq(%i[first second])
     end
 
-    it "executes after hooks even when call succeeds" do
-      action_class.after { meta[:cleanup] = "done" }
+    describe "when the action does not succeed" do
+      let(:ran) { [] }
 
-      result = action_class.call(name: "Success")
+      before do
+        events = ran
+        action_class.after { events << :after }
+      end
 
-      expect(result.meta).to include(cleanup: "done")
+      it "does not run them when call fails" do
+        action_class.define_method(:call) { Failure(:nope) }
+
+        expect(action_class.call(name: "Test").error).to eq(:nope)
+        expect(ran).to be_empty
+      end
+
+      it "does not run them when a before hook fails" do
+        action_class.before { Failure(:not_allowed) }
+
+        expect(action_class.call(name: "Test").error).to eq(:not_allowed)
+        expect(ran).to be_empty
+      end
+
+      it "does not run them when call raises" do
+        action_class.define_method(:call) { raise "boom" }
+
+        expect { action_class.call(name: "Test") }.to raise_error("boom")
+        expect(ran).to be_empty
+      end
     end
 
     it "supports method-based after hooks" do
@@ -398,6 +422,49 @@ RSpec.describe "Mu::Action hooks" do
 
       expect(child_result.meta).to include(child_only: true, parent_only: true)
     end
+
+    it "keeps the after and around hooks of a child out of its parent" do
+      child_class.after { meta[:child_only_after] = true }
+      child_class.around { |chain| chain.call.tap { meta[:child_only_around] = true } }
+
+      parent_result = parent_class.call(name: "Parent")
+      child_result = child_class.call(name: "Child")
+
+      expect(parent_result.meta.keys).not_to include(:child_after, :child_around, :child_only_after, :child_only_around)
+      expect(child_result.meta).to include(child_only_after: true, child_only_around: true)
+    end
+  end
+
+  describe "hook registration" do
+    it "rejects a block together with method names" do
+      expect { action_class.before(:prepare) { meta[:x] = 1 } }
+        .to raise_error(ArgumentError, "before hooks accept either a block or method names, not both")
+    end
+
+    it "rejects a hook without a block or a method name" do
+      expect { action_class.after }.to raise_error(ArgumentError, "after hook requires a block or method name")
+    end
+
+    it "rejects a hook that is neither a block nor a name" do
+      expect { action_class.around(42) }.to raise_error(ArgumentError, "Invalid around hook identifier: 42")
+    end
+
+    it "accepts several method names, given as symbols or strings" do
+      action_class.class_eval do
+        def first_step = meta[:steps] = [:first]
+        def second_step = meta[:steps] << :second
+      end
+
+      action_class.before(:first_step, "second_step")
+
+      expect(action_class.call(name: "Test").meta[:steps]).to eq(%i[first second])
+    end
+
+    it "reports an around hook method that does not exist when the action runs" do
+      action_class.around(:missing)
+
+      expect { action_class.call(name: "Test") }.to raise_error(NoMethodError, /Undefined hook method #missing/)
+    end
   end
 
   describe "hook error handling" do
@@ -409,7 +476,7 @@ RSpec.describe "Mu::Action hooks" do
       end.to raise_error(StandardError, "Before hook error")
     end
 
-    it "propagates errors from before hooks" do
+    it "propagates errors from before hooks through call as well" do
       action_class.before { raise StandardError, "Hook error" }
 
       expect do

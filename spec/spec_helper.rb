@@ -3,8 +3,13 @@
 require "mu/action"
 
 RSpec.configure do |config|
-  config.filter_run :focus
-  config.run_all_when_everything_filtered = true
+  # A focused example narrows a local run. On CI it is ignored, so that one
+  # left behind cannot hide the rest of the suite.
+  config.filter_run_when_matching :focus unless ENV["CI"]
+
+  # A random order reveals examples that depend on one another.
+  config.order = :random
+  Kernel.srand config.seed
 
   # Enable flags like --only-failures and --next-failure
   config.example_status_persistence_file_path = ".rspec_status"

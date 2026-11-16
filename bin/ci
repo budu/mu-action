@@ -16,6 +16,10 @@ set -uo pipefail
 
 cd "$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)" || exit 1
 
+# The specs ignore focused examples when CI is set, so that one left behind cannot
+# hide the rest of the suite here either.
+export CI=true
+
 WORKFLOW=.github/workflows/main.yml
 CHECKS=(
   "RuboCop|bundle exec rubocop"
