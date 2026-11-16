@@ -308,6 +308,8 @@ end
 assert SignIn.call(email: "jane@example.com", password: "secret").meta[:props] == { email: "jane@example.com" }
 ```
 
+A subclass inherits the choice. Every name must be a prop of the interactor: one that is not raises an `ArgumentError` when the interactor is called, so a misspelled name cannot leave a secret recorded.
+
 ### Context
 
 Information about who is calling and from where, such as the actor, the account or the channel, goes in `context` rather than in props. It's available in hooks and in `call`, and it's recorded in `meta[:context]`. It can be any object.

@@ -244,6 +244,60 @@ RSpec.describe "Mu::Action metadata and property tracking" do
     it "rejects false with only: or except:" do
       expect { recording(false, only: :name) }.to raise_error(ArgumentError, /accepts no only:/)
     end
+
+    it "accepts prop names given as strings" do
+      excluding = recording(except: %w[secret]).call(name: "n", secret: "s")
+      keeping = recording(only: "name").call(name: "n", secret: "s")
+
+      expect(excluding.meta[:props]).to eq(name: "n")
+      expect(keeping.meta[:props]).to eq(name: "n")
+    end
+
+    it "rejects a first argument that is not true or false" do
+      expect { recording(:name) }
+        .to raise_error(ArgumentError, /takes true or false, got :name: name the props with only: or except:/)
+      expect { recording(nil) }.to raise_error(ArgumentError, /takes true or false, got nil/)
+    end
+
+    it "rejects a name that is not a prop, when the action is instantiated" do
+      misspelled = recording(except: %i[secrte])
+
+      expect { misspelled.call(name: "n", secret: "s") }
+        .to raise_error(ArgumentError, /record_props names props that do not exist: \[:secrte\]/)
+      expect { recording(only: %i[name nmae]).new(name: "n", secret: "s") }
+        .to raise_error(ArgumentError, /do not exist: \[:nmae\]/)
+    end
+
+    it "accepts the name of a prop declared after record_props" do
+      late = Class.new do
+        include Mu::Action
+
+        record_props except: :token
+        prop :token, String
+
+        def call = Success(:ok)
+      end
+
+      expect(late.call(token: "t").meta[:props]).to eq({})
+    end
+
+    it "checks the names against the props of each class that inherits them" do
+      parent = Class.new do
+        include Mu::Action
+
+        record_props except: :token
+
+        def call = Success(:ok)
+      end
+      child = Class.new(parent) { prop :token, String }
+
+      expect(child.call(token: "t").meta[:props]).to eq({})
+      expect { parent.call }.to raise_error(ArgumentError, /do not exist: \[:token\]/)
+    end
+
+    it "records every prop when given true" do
+      expect(recording(true).call(name: "n", secret: "s").meta[:props]).to eq(name: "n", secret: "s")
+    end
   end
 
   describe "meta property" do

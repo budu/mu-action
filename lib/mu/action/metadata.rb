@@ -27,6 +27,10 @@ module Mu
         #   record_props false
         #   record_props only: %i[site_id]
         #   record_props except: %i[payload]
+        #
+        # The names can be symbols or strings. Each one must be a prop of the
+        # action, and of every subclass that inherits the choice: this is checked
+        # when an action is instantiated, since props can be declared afterwards.
         def record_props(enabled = true, only: nil, except: nil) # rubocop:disable Style/OptionalBooleanParameter
           @props_recording = build_props_recording(enabled, only, except)
         end
@@ -36,14 +40,24 @@ module Mu
         private
 
         def build_props_recording(enabled, only, except)
+          unless [true, false].include?(enabled)
+            raise ArgumentError, "record_props takes true or false, got #{enabled.inspect}: " \
+                                 "name the props with only: or except:"
+          end
           raise ArgumentError, "record_props accepts only: or except:, not both" if only && except
 
           # @type var filter: ::Hash[Symbol, ::Array[Symbol]]
-          filter = { only:, except: }.compact.transform_values { Array(_1) }
+          filter = { only:, except: }.compact.transform_values { symbolize_prop_names(_1) }
           return filter.empty? || filter if enabled
           raise ArgumentError, "record_props false accepts no only: or except:" if filter.any?
 
           false
+        end
+
+        def symbolize_prop_names(names)
+          # @type var list: ::Array[untyped]
+          list = Array(names)
+          list.map(&:to_sym)
         end
       end
 
@@ -83,10 +97,20 @@ module Mu
         end.except(:meta, :context)
 
         case recording
-        in { only: } then props.slice(*only)
-        in { except: } then props.except(*except)
+        in { only: } then props.slice(*known_props(only, props))
+        in { except: } then props.except(*known_props(except, props))
         else props
         end
+      end
+
+      # The names, once each of them is known to be a prop. A name that matches
+      # no prop would otherwise be ignored, and a misspelled name in except:
+      # would leave the prop it meant to exclude recorded.
+      def known_props(names, props)
+        unknown = names - props.keys
+        return names if unknown.empty?
+
+        raise ArgumentError, "#{self.class}: record_props names props that do not exist: #{unknown.inspect}"
       end
     end
   end
