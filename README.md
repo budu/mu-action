@@ -66,6 +66,8 @@ A `Success` result contains the `value` returned by the interactor, while a `Fai
 
 A failure will return immediately.
 
+A result is immutable: it is frozen and has no writer, so a `Success` cannot be turned into another one after the fact. The `meta` and `details` hashes it holds are not frozen.
+
 `call` must return the `Success(...)` it built, or call `Failure(...)`. Anything else raises a `TypeError`, so a branch that forgets its `Success` cannot pass for a result:
 
 ```ruby

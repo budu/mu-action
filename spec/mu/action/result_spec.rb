@@ -25,6 +25,54 @@ RSpec.describe Mu::Action::Result do
     end
   end
 
+  describe "immutability" do
+    let(:success) { Mu::Action::Success.new("value", meta: { source: :spec }) }
+    let(:failure) { Mu::Action::Failure.new(:invalid, details: { field: :name }) }
+
+    it "freezes a result" do
+      expect(success).to be_frozen
+      expect(failure).to be_frozen
+    end
+
+    it "has no writer" do
+      writers = %i[value= meta= error= details= []=]
+
+      expect(writers.select { success.respond_to?(_1) || failure.respond_to?(_1) }).to be_empty
+      expect { success.value = "other" }.to raise_error(NoMethodError)
+      expect { failure.error = :other }.to raise_error(NoMethodError)
+    end
+
+    it "freezes the result of an action, whatever its result type" do
+      typed = Class.new do
+        include Mu::Action
+
+        result String
+
+        def call = Success("typed")
+      end
+      failing = Class.new do
+        include Mu::Action
+
+        def call = Failure(:nope)
+      end
+
+      expect(typed.call).to be_frozen
+      expect(failing.call).to be_frozen
+    end
+
+    it "leaves the metadata open, for the after hooks that write to it" do
+      hooked = Class.new do
+        include Mu::Action
+
+        after { meta[:finished] = true }
+
+        def call = Success(:done)
+      end
+
+      expect(hooked.call.meta).to include(finished: true)
+    end
+  end
+
   describe "custom result types" do
     let(:action_class) do
       Class.new do

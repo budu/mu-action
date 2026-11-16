@@ -4,7 +4,11 @@ module Mu
   module Action
     # Base result class that wraps action outcomes with success/failure state
     # and metadata. Extended by Success and Failure classes for pattern matching.
-    class Result < Literal::Struct
+    #
+    # A result is immutable: it is frozen and has no writer. The hashes it
+    # holds are not frozen, as after hooks write to the metadata once the
+    # result is built.
+    class Result < Literal::Data
       prop :meta, Hash, default: -> { {} } # steep:ignore UnannotatedEmptyCollection
 
       attr_reader :meta

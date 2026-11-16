@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Breaking
+- Results are immutable. `Success` and `Failure` are frozen and have no writer: `result.value = …`, `result.meta = …`, `result.error = …`, `result.details = …` and `result[:value] = …` no longer exist, nor does the hash-style reader `result[:value]`. The contents of `meta` and `details` can still change.
 - `call` must return the `Success(...)` it built, or call `Failure(...)`; so must an around hook, which can also return the result of the chain. Anything else raises a `TypeError`. A raw value used to be returned as the result, without the `result` type being checked, and the last expression of an around hook replaced the result. To use another action's value, write `Success(Other.call!(...))`.
 - A `Failure` of another action returned from `call` becomes the failure of the action, as with `call!`: around hooks see an exception, `after` hooks are skipped and the declared failures are checked. It used to be returned as it was.
 - `record_props` raises an `ArgumentError` when its first argument is not `true` or `false`, and an action raises one when it is called if `record_props` names something that is not one of its props. `record_props :email` used to record every prop, and a misspelled name in `except:` left the prop recorded.
