@@ -286,6 +286,29 @@ in Mu::Action::Failure(error: :invalid, details: { errors: })
 end
 ```
 
+`Failure` stops the interactor by raising a `Mu::Action::FailureError`, which is a `StandardError`. A `rescue StandardError`, or a bare `rescue`, around it therefore catches the failure along with real errors. When `call` rescues broadly, let the failures through first:
+
+```ruby
+class Charge
+  include Mu::Action
+
+  prop :amount, Integer
+
+  def call
+    Failure(:invalid_amount) unless @amount.positive?
+    Success(@amount)
+  rescue Mu::Action::FailureError
+    raise
+  rescue StandardError => e
+    Failure(:charge_failed, message: e.message)
+  end
+end
+
+assert Charge.call(amount: 0).error == :invalid_amount
+```
+
+Without the first `rescue`, this interactor would fail with `:charge_failed` in both cases.
+
 An interactor can declare the failures it returns, with the types of their details. Once it declares any, an undeclared failure or a detail of the wrong type raises an `ArgumentError`. Interactors without declarations accept any failure.
 
 ```ruby
