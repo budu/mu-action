@@ -224,45 +224,87 @@ The before and after hooks run outside the around hooks: a transaction opened by
 
 When the interactor fails or raises, in a before hook, in `call` or in an around hook, everything that would follow is skipped. In particular, the after hooks only run when the interactor succeeds.
 
-### Custom Result Types
+### Typed Results
 
-Define typed results for better API contracts:
+`result` declares the type of the value an interactor returns. `Success` then only accepts a value of that type:
 
 ```ruby
-class RollaDice
+Quote = Data.define(:amount, :currency)
+
+class PriceQuote
+  include Mu::Action
+
+  result Quote
+
+  prop :quantity, Integer
+
+  def call
+    Failure(:out_of_stock) if @quantity > 100
+    Success(Quote.new(amount: @quantity * 250, currency: "CAD"))
+  end
+end
+
+quote = PriceQuote.call!(quantity: 4)
+assert quote.amount == 1000
+```
+
+A value of another type is a bug in the interactor, not a failure. `Success` raises a `Literal::TypeError`, which `call` does not turn into a `Failure`:
+
+```ruby
+class Careless
+  include Mu::Action
+
+  result Quote
+
+  def call = Success(1000)
+end
+
+error =
+  begin
+    Careless.call
+  rescue Literal::TypeError => e
+    e
+  end
+
+assert error.message.include?("Expected: Quote")
+```
+
+The type can be any [Literal type](https://literal.fun/docs/built-in-types.html), such as a range of integers, or a value that may be `nil`:
+
+```ruby
+class RollDice
   include Mu::Action
 
   result _Integer(1..6)
 
-  def call
-    Success rand 1..6
-  end
+  def call = Success(rand(1..6))
 end
 
-result = RollaDice.call!
-assert (1..6).cover? result
-```
-
-The result method above is just a shortcut for the type of the value property of the Success class.
-
-```ruby
-class RollaDice
+class FindNickname
   include Mu::Action
 
-  class Success < Mu::Action::Success
-    prop :value, _Integer(1..6), :positional
-  end
+  result _Nilable(String)
 
-  def call
-    Success rand 1..6
-  end
+  prop :name, String
+
+  def call = Success({ "Robert" => "Bob" }[@name])
 end
 
-result = RollaDice.call!
-assert (1..6).cover? result
+assert (1..6).cover?(RollDice.call!)
+assert FindNickname.call!(name: "Robert") == "Bob"
+assert FindNickname.call!(name: "Jane").nil?
 ```
 
-You can refer to the [Literal documentation](https://literal.fun/docs) for more details on the [built-in types](https://literal.fun/docs/built-in-types.html) or see some [example types](https://literal.fun/docs/example-types.html).
+Without `result`, an interactor accepts any value, `nil` included.
+
+`result` also gives the interactor its own `Success` class, so a `case` can match the success of one interactor in particular:
+
+```ruby
+case PriceQuote.call(quantity: 4)
+in PriceQuote::Success(value: Quote(amount:))
+  assert amount == 1000
+end
+```
 
 ### Failures
 
