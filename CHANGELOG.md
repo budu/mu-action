@@ -18,6 +18,7 @@
 - Development now follows agent skills in `.agents/skills` (commits, pull requests, changelog, dependencies, releases, reviews), and `AGENTS.md` is the single guide; `CLAUDE.md` points to it.
 
 ### Removed
+- The RBS signatures are no longer shipped in the gem. An application could not load them: they refer to Literal declarations that exist nowhere, and they did not describe the class methods of an action. They stay in the repository for the library's own type check.
 - Guard, its RSpec and RuboCop plugins, and the local Steep plugin (`lib/guard/steep.rb`) from the development tooling.
 
 ### Fixed

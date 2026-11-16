@@ -12,14 +12,15 @@ The README documents the public API.
 |----------------------|----------------------------------------------------------------------|
 | `lib/mu/action.rb`   | Entry point: wiring, `call`, `call!`, `run`, `Success`, `Failure`, `result` |
 | `lib/mu/action/`     | One file per feature: `hooks`, `failures`, `metadata`, `context`, `result`, `failure_error` |
-| `sig/mu/`            | RBS signatures shipped with the gem, one file per library file       |
-| `sig/*.rbs`          | Local stubs for Steep (Kernel, Literal), not shipped                 |
+| `sig/mu/`            | RBS signatures for the library's own Steep check, one file per library file |
+| `sig/*.rbs`          | Local stubs for Steep (Kernel, Literal)                              |
 | `spec/`              | RSpec examples, mirroring `lib/`                                     |
 | `bin/`               | Contributor tooling: `ci`, `console`, `setup`, `test_readme_examples`    |
 | `.agents/skills/`    | Agent skills; `.claude/skills` is a symlink to it                    |
 
-The gemspec selects the released files with an allowlist: `lib/mu/`, `sig/mu/`,
-`README.md`, `LICENSE.txt`, and `CHANGELOG.md`.
+The gemspec selects the released files with an allowlist: `lib/mu/`, `README.md`,
+`LICENSE.txt`, and `CHANGELOG.md`. A spec pins that list. The signatures under `sig/`
+are not released.
 
 ## Commands
 

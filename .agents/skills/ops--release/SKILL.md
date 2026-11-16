@@ -42,8 +42,8 @@ gem build mu-action.gemspec
 tar -xOf mu-action-X.Y.Z.gem data.tar.gz | tar -tz
 ```
 
-The build prints no warning, and the package contains only `lib/mu/**`, `sig/mu/**`,
-`README.md`, `LICENSE.txt`, and `CHANGELOG.md`. Install it into a temporary
+The build prints no warning, and the package contains only `lib/mu/**`, `README.md`,
+`LICENSE.txt`, and `CHANGELOG.md`. Install it into a temporary
 `GEM_HOME` and run an action from outside the repository to prove it loads.
 
 ## 5. Tag
