@@ -240,6 +240,34 @@ RSpec.describe "Mu::Action metadata and property tracking" do
       expect(Class.new(parent).props_recording).to eq(except: %i[secret])
     end
 
+    describe "chosen on the parent after the subclass was defined" do
+      let(:parent) do
+        Class.new do
+          include Mu::Action
+
+          prop :name, String
+          prop :secret, String
+
+          def call = Success(:ok)
+        end
+      end
+
+      it "applies to the subclass" do
+        child = Class.new(parent)
+        parent.record_props except: :secret
+
+        expect(child.call(name: "n", secret: "s").meta[:props]).to eq(name: "n")
+      end
+
+      it "does not replace the choice of the subclass" do
+        child = Class.new(parent) { record_props only: :name }
+        parent.record_props false
+
+        expect(child.call(name: "n", secret: "s").meta[:props]).to eq(name: "n")
+        expect(parent.call(name: "n", secret: "s").meta).not_to have_key(:props)
+      end
+    end
+
     it "rejects only: with except:" do
       expect { recording(only: :name, except: :secret) }.to raise_error(ArgumentError, /not both/)
     end

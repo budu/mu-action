@@ -65,10 +65,14 @@ A change is complete when:
   that name from applications: avoid it when a method will do, update the list in the
   README, and update the spec that pins it.
 - A feature is one module in one file. Its class methods are in a nested
-  `ClassMethods` module that it extends onto the action class. What it must do when
-  a class is subclassed or instantiated is in a nested `Inheritance` or `Lifecycle`
-  module that it prepends onto the singleton class, so that it runs even when an
-  action class defines `inherited` or `new` without calling `super`.
+  `ClassMethods` module that it extends onto the action class.
+- What a class declares (hooks, failures, the props recording) is stored on that class
+  alone and combined with its parent's when read, through `superclass`. A subclass
+  therefore follows its parent whenever the parent changes; nothing is copied when a
+  class is subclassed, and there is no `inherited` hook.
+- Nothing may change a class when it is instantiated. `Metadata::Lifecycle` is
+  prepended onto the singleton class to initialize the metadata in `new`, so that it
+  runs even when an action class defines `new` without calling `super`.
 - Specs describe observable behavior and build their action classes inline with
   `Class.new { include Mu::Action }`. They run in random order, and a focused example
   is ignored when `CI` is set, which `bin/ci` does.

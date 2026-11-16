@@ -6,16 +6,17 @@ module Mu
     module Metadata : _ActionInstance
       def self.included: (untyped base) -> void
 
-      module ClassMethods
+      module ClassMethods : ::Class
+        @props_recording: props_recording
+
         def record_props: (?bool enabled, ?only: prop_names?, ?except: prop_names?) -> props_recording
         def props_recording: () -> props_recording
         def build_props_recording: (untyped enabled, prop_names? only, prop_names? except) -> props_recording
         def symbolize_prop_names: (prop_names names) -> ::Array[Symbol]
       end
 
-      module Lifecycle : ClassMethods
+      module Lifecycle
         def new: (*untyped, **untyped) -> untyped
-        def inherited: (untyped subclass) -> void
       end
 
       def initialize_meta: () -> void

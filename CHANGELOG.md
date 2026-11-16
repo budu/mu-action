@@ -10,6 +10,7 @@
 - An around block that takes one parameter receives the chain, as an around method does. It used to receive the action. An around block that takes no parameter raises an `ArgumentError`, since it could not call the chain.
 
 ### Changed
+- A subclass follows its parent class. A hook, a declared failure or a `record_props` choice added to a class after one of its subclasses was defined now applies to that subclass; each used to be copied when the subclass was defined. A parent's hooks always run before those of its subclasses.
 - Literal 1.9 or later is required; 1.7 and 1.8 are no longer supported. CI only tested 1.9, and on 1.7 a prop default could not read `context`.
 - The `meta` and `context` props are declared when `Mu::Action` is included, before the action's own props. They were added the first time the class was instantiated.
 - The library is split into one file per feature under `lib/mu/action/`, and the RBS signatures follow the same layout. Behavior is unchanged. The internal modules `Initializer`, `MetaPropAdder`, `HookPropagator` and `FailureChecking` are replaced by `Context`, `Metadata`, `Hooks` and `Failures`. Like every constant of `Mu::Action`, these names come before top-level constants inside action classes; the README lists them.

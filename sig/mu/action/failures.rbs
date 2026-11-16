@@ -3,7 +3,10 @@ module Mu
     module Failures : _ActionInstance
       def self.included: (untyped base) -> void
 
-      module ClassMethods
+      module ClassMethods : ::Class
+        @own_failures: ::Hash[untyped, ::Hash[Symbol, untyped]]?
+        @failure_sources: ::Array[untyped]?
+
         def failure: (*untyped codes, **untyped details) -> void
         def failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
         def declares_failures?: () -> bool
@@ -11,10 +14,6 @@ module Mu
         def failure_sources: () -> ::Array[_ActionClass]
         def failure_lineage: (?::Array[untyped] seen) -> ::Array[untyped]
         def declare_failure_sources: (?from: untyped, **untyped unexpected) -> void
-      end
-
-      module Inheritance : ClassMethods
-        def inherited: (untyped subclass) -> void
       end
 
       def failure_from: (FailureError exception) -> Failure

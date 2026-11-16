@@ -11,7 +11,6 @@ module Mu
     module Failures
       def self.included(base)
         base.extend(ClassMethods)
-        base.singleton_class.prepend(Inheritance)
       end
 
       # Class methods that declare and list the failures of an action.
@@ -32,28 +31,44 @@ module Mu
           return declare_failure_sources(**details) if codes.empty?
           raise ArgumentError, "details can only be declared for a single failure" if codes.size > 1 && details.any?
 
-          codes.each { own_failures[_1] = details }
+          own = (@own_failures ||= {}) #: ::Hash[untyped, ::Hash[Symbol, untyped]]
+          codes.each { own[_1] = details }
         end
 
-        # The declared failures, including those of the +from:+ actions,
-        # as a hash of error code to details types.
+        # The declared failures, including those of the parent class and of the
+        # +from:+ actions, as a hash of error code to details types. They are
+        # worked out when read, so that a declaration added to a parent class
+        # reaches its subclasses whenever it is added.
         def failures
           failure_lineage.map(&:own_failures).reduce({}, :merge)
         end
 
-        def declares_failures? = own_failures.any? || failure_sources.any?
-        def own_failures = (@own_failures ||= {})
-        def failure_sources = (@failure_sources ||= [])
+        def declares_failures? = failure_sources.any? || failures.any?
 
-        # This action preceded by the actions it takes failures from, each one
-        # once, so that actions that name each other do not recurse forever.
+        # The failures this class declares itself.
+        def own_failures = @own_failures || {}
+
+        # The +from:+ actions of this class and of its parent classes.
+        def failure_sources
+          # @type var parent: untyped
+          parent = superclass
+          inherited = parent.respond_to?(:failure_sources) ? parent.failure_sources : [] #: ::Array[untyped]
+          inherited + (@failure_sources || [])
+        end
+
+        # This action preceded by its parent class and by the actions it takes
+        # failures from, each one once, so that actions that name each other do
+        # not recurse forever.
         #
         # @api private
         def failure_lineage(seen = [])
           return [] if seen.include?(self)
 
           seen << self
-          failure_sources.flat_map { _1.failure_lineage(seen) } << self
+          # @type var parent: untyped
+          parent = superclass
+          ancestors = parent.respond_to?(:failure_lineage) ? [parent] : [] #: ::Array[untyped]
+          (ancestors + (@failure_sources || [])).flat_map { _1.failure_lineage(seen) } << self
         end
 
         private
@@ -66,17 +81,8 @@ module Mu
           invalid = sources.reject { _1.is_a?(Class) && _1.include?(Mu::Action) }
           raise ArgumentError, "failure from: expects action classes, got #{invalid.inspect}" if invalid.any?
 
-          failure_sources.concat(sources)
-        end
-      end
-
-      # Gives each subclass its own copy of the declarations, so that declaring
-      # a failure on a subclass never modifies its parent.
-      module Inheritance
-        def inherited(subclass)
-          super
-          subclass.instance_variable_set(:@own_failures, own_failures.dup)
-          subclass.instance_variable_set(:@failure_sources, failure_sources.dup)
+          own = (@failure_sources ||= []) #: ::Array[untyped]
+          own.concat(sources)
         end
       end
 

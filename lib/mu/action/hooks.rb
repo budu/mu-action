@@ -10,7 +10,6 @@ module Mu
     module Hooks
       def self.included(base)
         base.extend(ClassMethods)
-        base.singleton_class.prepend(Inheritance)
       end
 
       # How many positional arguments a hook takes, from its parameters. A hook
@@ -23,6 +22,11 @@ module Mu
 
       # Class methods that register hooks, as blocks or as method names.
       #
+      # A class keeps the hooks it registers itself. The hooks of an action are
+      # those of its parent class followed by its own, worked out when they are
+      # read, so that a hook added to a parent reaches its subclasses whenever
+      # it is added.
+      #
       # @api public
       module ClassMethods
         # An around hook takes the chain, or the action and the chain, and calls
@@ -32,22 +36,31 @@ module Mu
             raise ArgumentError, "an around block takes the chain, or the action and the chain"
           end
 
-          register_hook(around_hooks, method_names, block, name: :around)
+          register_hook(method_names, block, name: :around)
         end
 
-        def before(*method_names, &block) = register_hook(before_hooks, method_names, block, name: :before)
-        def after(*method_names, &block) = register_hook(after_hooks, method_names, block, name: :after)
+        def before(*method_names, &block) = register_hook(method_names, block, name: :before)
+        def after(*method_names, &block) = register_hook(method_names, block, name: :after)
 
-        def around_hooks = (@around_hooks ||= [])
-        def before_hooks = (@before_hooks ||= [])
-        def after_hooks = (@after_hooks ||= [])
+        def around_hooks = parent_hooks(:around_hooks) + own_hooks(:around)
+        def before_hooks = parent_hooks(:before_hooks) + own_hooks(:before)
+        def after_hooks = parent_hooks(:after_hooks) + own_hooks(:after)
 
         private
 
-        def register_hook(collection, method_names, block, name:)
+        def own_hooks(name) = @own_hooks&.fetch(name, nil) || []
+
+        def parent_hooks(reader)
+          # @type var parent: untyped
+          parent = superclass
+          parent.respond_to?(reader) ? parent.public_send(reader) : []
+        end
+
+        def register_hook(method_names, block, name:)
           ensure_valid_hook_inputs(method_names, block, name:)
           additions = normalize_hook_inputs(method_names, block, name:)
-          collection.concat(additions)
+          hooks = (@own_hooks ||= {}) #: ::Hash[Symbol, ::Array[untyped]]
+          (hooks[name] ||= []).concat(additions)
         end
 
         def normalize_hook_inputs(method_names, block, name:)
@@ -74,17 +87,6 @@ module Mu
 
             method_name.to_sym
           end
-        end
-      end
-
-      # Gives each subclass its own copy of the hooks, so that registering a
-      # hook on a subclass never modifies its parent.
-      module Inheritance
-        def inherited(subclass)
-          super
-          subclass.instance_variable_set(:@before_hooks, before_hooks.dup)
-          subclass.instance_variable_set(:@after_hooks, after_hooks.dup)
-          subclass.instance_variable_set(:@around_hooks, around_hooks.dup)
         end
       end
 
