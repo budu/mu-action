@@ -10,6 +10,7 @@
 - An around block that takes one parameter receives the chain, as an around method does. It used to receive the action. An around block that takes no parameter raises an `ArgumentError`, since it could not call the chain.
 
 ### Changed
+- The message of the `FailureError` raised by `call!` or `run!` names the action and the keys of the details, as in `CreateUser failed: invalid (details: errors)`. It was the error alone. The values of the details are not shown.
 - Hooks, failure checks and metadata recording no longer add methods to an action. An action gets seven methods from `Mu::Action` (`meta`, `context`, `Success`, `Failure`, `run`, `run!` and the private `initialize_meta`); the README documents them, and each can be overridden with `super`. A method of an action named `with_hooks`, `check_failure` or `resolve_method`, for example, no longer replaces part of the library.
 - A subclass follows its parent class. A hook, a declared failure or a `record_props` choice added to a class after one of its subclasses was defined now applies to that subclass; each used to be copied when the subclass was defined. A parent's hooks always run before those of its subclasses.
 - Literal 1.9 or later is required; 1.7 and 1.8 are no longer supported. CI only tested 1.9, and on 1.7 a prop default could not read `context`.

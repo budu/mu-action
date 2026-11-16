@@ -104,10 +104,25 @@ in Mu::Action::Failure(error:)
   puts "Failed: #{error}"
 end
 
-# Returns the value on success, raises an exception on failure
+# Returns the value on success, raises a Mu::Action::FailureError on failure
 user = CreateUser.call!(email: "jane@example.com", name: "Jane")
 assert user.name == "Jane"
 assert user.email == "jane@example.com"
+```
+
+The error raised by `call!` has the `error` and the `details` of the failure, and the `Failure` itself as `failure`. Its message names the interactor, the error and the keys of the details. The values of the details are left out, as they may not belong in a log.
+
+```ruby
+error =
+  begin
+    CreateUser.call!(email: "existing@example.com", name: "Jane")
+  rescue Mu::Action::FailureError => e
+    e
+  end
+
+assert error.error == :user_exists
+assert error.failure.meta[:class] == CreateUser
+assert error.message == "CreateUser failed: user_exists"
 ```
 
 ### Hooks
