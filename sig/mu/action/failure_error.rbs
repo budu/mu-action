@@ -6,6 +6,7 @@ module Mu
       attr_reader failure: Failure?
 
       def initialize: (untyped error, ?details: ::Hash[Symbol, untyped], ?failure: Failure?) -> void
+      def summary: () -> ::String
     end
   end
 end
