@@ -2,6 +2,7 @@ module Mu
   module Action
     module Hooks : _ActionInstance
       def self.included: (untyped base) -> void
+      def self.positional_arity: (::Array[untyped] parameters) -> Integer
 
       module ClassMethods
         def around: (*Symbol) ?{ (*untyped) -> untyped } -> ::Array[untyped]
@@ -27,7 +28,7 @@ module Mu
       def execute_simple_hook: (::Proc | ::Symbol) -> untyped
       def build_around_wrapper: ((::Proc | ::Symbol), ::Proc) -> ::Proc
       def invoke_around_method: (::Symbol, ::Proc) -> untyped
-      def around_arguments: (UnboundMethod, ::Proc) -> ::Array[untyped]
+      def around_arguments: (::Array[untyped], ::Proc) -> ::Array[untyped]
       def resolve_method: (Symbol) -> UnboundMethod
     end
   end

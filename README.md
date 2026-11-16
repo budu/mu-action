@@ -159,7 +159,7 @@ class ProcessPayment
 end
 ```
 
-Around hook methods may also receive no arguments and use `yield`, or accept two arguments `(action, chain)` to mirror the block-based signature.
+An around hook takes the chain, or the action and the chain, whether it is a block or a method: `around { |chain| ... }` works like `def wrap_in_transaction(chain)`, and a method can take `(action, chain)` like the block above. A method can also take no argument and use `yield`.
 
 ### Custom Result Types
 

@@ -176,6 +176,52 @@ RSpec.describe "Mu::Action hooks" do
       expect(skipped_result).to eq("Skipped execution")
     end
 
+    it "passes the chain to an around block that takes one parameter" do
+      log = []
+      action_class.around { |chain| chain.call.tap { log << :outer } }
+      action_class.around { |_action, chain| chain.call.tap { log << :inner } }
+
+      expect(action_class.call!(name: "Test")).to eq("Hello Test")
+      expect(log).to eq(%i[inner outer])
+    end
+
+    it "passes the chain to an around block that uses a numbered parameter" do
+      action_class.around { _1.call.tap { meta[:wrapped] = true } }
+
+      expect(action_class.call(name: "Test").meta).to include(wrapped: true)
+    end
+
+    it "passes the action and the chain to an around block that takes any number of parameters" do
+      action_class.around { |*arguments| arguments.last.call.tap { meta[:same] = arguments.first.equal?(self) } }
+
+      expect(action_class.call(name: "Test").meta).to include(same: true)
+    end
+
+    it "accepts lambdas that take the chain, or the action and the chain" do
+      action_class.around(&->(chain) { chain.call.tap { meta[:one] = true } })
+      action_class.around(&->(action, chain) { chain.call.tap { action.meta[:two] = true } })
+
+      expect(action_class.call(name: "Test").meta).to include(one: true, two: true)
+    end
+
+    it "rejects an around block that takes no parameter, as it could not call the chain" do
+      expect { action_class.around { :never_continues } }
+        .to raise_error(ArgumentError, /around block takes the chain, or the action and the chain/)
+    end
+
+    it "does not count the keyword parameters of a method-based around hook" do
+      action_class.class_eval do
+        def wrap_with_label(chain, label: :default)
+          meta[:label] = label
+          chain.call
+        end
+      end
+
+      action_class.around :wrap_with_label
+
+      expect(action_class.call(name: "Test").meta).to include(label: :default)
+    end
+
     it "supports method-based around hooks receiving the chain" do
       action_class.class_eval do
         def wrap_call(chain)
