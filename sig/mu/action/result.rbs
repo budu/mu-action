@@ -1,6 +1,6 @@
 module Mu
   module Action
-    class Result < Literal::Struct
+    class Result < Literal::Data
       attr_reader meta: ::Hash[untyped, untyped]
 
       def initialize: (*untyped, **untyped) -> void

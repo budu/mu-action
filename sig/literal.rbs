@@ -5,7 +5,7 @@ module Literal
     def _Nilable: (untyped) -> untyped
   end
 
-  class Struct
+  class Data
     extend Properties
 
     def self.prop: (Symbol, untyped, *untyped, ?default: untyped) -> untyped
