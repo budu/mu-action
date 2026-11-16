@@ -1,14 +1,16 @@
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-16
+
 ### Breaking
-- Results are immutable. `Success` and `Failure` are frozen and have no writer: `result.value = …`, `result.meta = …`, `result.error = …`, `result.details = …` and `result[:value] = …` no longer exist, nor does the hash-style reader `result[:value]`. The contents of `meta` and `details` can still change.
 - `call` must return the `Success(...)` it built, or call `Failure(...)`; so must an around hook, which can also return the result of the chain. Anything else raises a `TypeError`. A raw value used to be returned as the result, without the `result` type being checked, and the last expression of an around hook replaced the result. To use another action's value, write `Success(Other.call!(...))`.
 - A `Failure` of another action returned from `call` becomes the failure of the action, as with `call!`: around hooks see an exception, `after` hooks are skipped and the declared failures are checked. It used to be returned as it was.
-- `record_props` raises an `ArgumentError` when its first argument is not `true` or `false`, and an action raises one when it is called if `record_props` names something that is not one of its props. `record_props :email` used to record every prop, and a misspelled name in `except:` left the prop recorded.
 - The context is inherited by an action called directly by a running action, and no longer by a thread or a fiber started by it: pass `context:` explicitly to an action that runs in another thread or fiber. In 0.3.0 a long-lived thread first started inside an action, such as a thread pool worker, kept that action's context for all the work it did later.
-- `failure :code, from: OtherAction` declares a detail named `from`; it no longer also takes the failures of `OtherAction`. Write `failure from: OtherAction` on its own.
 - Declaring a prop named `meta` or `context` raises an `ArgumentError`. In 0.3.0 such a prop was silently replaced the first time the action was instantiated.
+- `record_props` raises an `ArgumentError` when its first argument is not `true` or `false`, and an action raises one when it is called if `record_props` names something that is not one of its props. `record_props :email` used to record every prop, and a misspelled name in `except:` left the prop recorded.
 - An around block that takes one parameter receives the chain, as an around method does. It used to receive the action. An around block that takes no parameter raises an `ArgumentError`, since it could not call the chain.
+- `failure :code, from: OtherAction` declares a detail named `from`; it no longer also takes the failures of `OtherAction`. Write `failure from: OtherAction` on its own.
+- Results are immutable. `Success` and `Failure` are frozen and have no writer: `result.value = …`, `result.meta = …`, `result.error = …`, `result.details = …` and `result[:value] = …` no longer exist, nor does the hash-style reader `result[:value]`. The contents of `meta` and `details` can still change.
 
 ### Changed
 - The message of the `FailureError` raised by `call!` or `run!` names the action and the keys of the details, as in `CreateUser failed: invalid (details: errors)`. It was the error alone. The values of the details are not shown.
@@ -19,7 +21,7 @@
 - A subclass follows its parent class. A hook, a declared failure or a `record_props` choice added to a class after one of its subclasses was defined now applies to that subclass; each used to be copied when the subclass was defined. A parent's hooks always run before those of its subclasses.
 - Literal 1.9 or later is required; 1.7 and 1.8 are no longer supported. CI only tested 1.9, and on 1.7 a prop default could not read `context`.
 - The `meta` and `context` props are declared when `Mu::Action` is included, before the action's own props. They were added the first time the class was instantiated.
-- The library is split into one file per feature under `lib/mu/action/`, and the RBS signatures follow the same layout. Behavior is unchanged. The internal modules `Initializer`, `MetaPropAdder`, `HookPropagator` and `FailureChecking` are replaced by `Context`, `Metadata`, `Hooks` and `Failures`. Like every constant of `Mu::Action`, these names come before top-level constants inside action classes; the README lists them.
+- The library is split into one file per feature under `lib/mu/action/`. The internal modules `Initializer`, `MetaPropAdder`, `HookPropagator` and `FailureChecking` are replaced by `Context`, `Metadata`, `Hooks` and `Failures`. Like every constant of `Mu::Action`, these names come before top-level constants inside action classes; the README lists them.
 - The README documents the order in which hooks run, and that after hooks only run when the action succeeds.
 - The README warns that a broad `rescue` in `call` catches the error `Failure` raises, and shows how to let it through.
 - The README's section on result types is rewritten as "Typed Results": a domain object as the result, the error a wrong type raises, and results that may be `nil`.
