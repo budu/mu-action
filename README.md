@@ -356,6 +356,56 @@ assert SignIn.call(email: "jane@example.com", password: "secret").meta[:props] =
 
 A subclass inherits the choice. Every name must be a prop of the interactor: one that is not raises an `ArgumentError` when the interactor is called, so a misspelled name cannot leave a secret recorded.
 
+### The Methods of an Interactor
+
+Including `Mu::Action` gives an interactor these methods and no other. Hooks, failure checks and metadata recording run from outside it, so every other method name is yours.
+
+- `call`: yours to implement. It returns `Success(...)` or calls `Failure(...)`.
+- `Success(value = nil)`: builds the result of the interactor.
+- `Failure(error, **details)`: checks the failure against the declared ones, then raises, so that nothing after it runs.
+- `meta`: the metadata hash, which the result carries.
+- `context`: what the caller passed as `context:`, or the context of the calling interactor.
+- `run`: runs the interactor and returns its result, a `Success` or a `Failure`. `MyAction.call(...)` is `MyAction.new(...).run`.
+- `run!`: runs the interactor and returns its `Success`, or raises a `Mu::Action::FailureError`. It sets the context and runs the hooks around `call`.
+- `initialize_meta` (private): fills in `meta` when the interactor is built.
+
+Each of them can be overridden, with `super` for the original behavior:
+
+```ruby
+class Import
+  include Mu::Action
+
+  prop :rows, Integer
+
+  # A default context, when the caller gives none.
+  def context = super || { actor: "system" }
+
+  # A detail added to every failure.
+  def Failure(error, **details) = super(error, **details, rows: @rows)
+
+  def call
+    Failure(:empty) if @rows.zero?
+    Success(@rows)
+  end
+
+  private
+
+  # Something else than the props in the metadata.
+  def initialize_meta
+    super
+    meta[:props] = { rows: "#{@rows} rows" }
+  end
+end
+
+result = Import.call(rows: 0)
+
+assert result.details == { rows: 0 }
+assert result.meta[:context] == { actor: "system" }
+assert result.meta[:props] == { rows: "0 rows" }
+```
+
+Two rules apply to an override. `meta` must return the same hash on every call, because hooks write to it and the result shares it. `Success` must return what `super` built, because `call` has to return the result of its own interactor.
+
 ### Subclasses
 
 A subclass has the hooks of its parent class, followed by its own. It also has its parent's declared failures, and its `record_props` choice unless it makes its own. These follow the parent: a hook added to a parent class applies to its subclasses whenever it is added.

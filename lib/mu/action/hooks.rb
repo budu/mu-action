@@ -8,8 +8,20 @@ module Mu
     # @api private Applications use what this module adds to action classes,
     #   never the module itself.
     module Hooks
-      def self.included(base)
+      def self.install(base)
         base.extend(ClassMethods)
+      end
+
+      # Runs the hooks of an action around the block, which makes the call:
+      # the before hooks, the around hooks wrapped around the block, then the
+      # after hooks. Hooks run in the action, with instance_exec or send.
+      def self.run(action, &)
+        action.class.before_hooks.each { run_hook(action, _1) }
+        # An around hook can replace the result, so what the chain returns is
+        # checked like what the call returns.
+        result = Action.own_result(action, around_chain(action, &).call, "an around hook")
+        action.class.after_hooks.each { run_hook(action, _1) }
+        result
       end
 
       # How many positional arguments a hook takes, from its parameters. A hook
@@ -90,74 +102,61 @@ module Mu
         end
       end
 
-      protected
+      class << self
+        private
 
-      def with_hooks(&)
-        run_before_hooks
-        call_chain = build_around_chain(&)
-        # An around hook can replace the result, so what the chain returns is
-        # checked like what the call returns.
-        result = own_result(call_chain.call, "an around hook")
-        run_after_hooks
-        result
-      end
-
-      private
-
-      def run_before_hooks = self.class.before_hooks.each { execute_simple_hook(_1) }
-      def run_after_hooks = self.class.after_hooks.each { execute_simple_hook(_1) }
-
-      def build_around_chain(&block)
-        chain = block
-        self.class.around_hooks.reverse_each do |hook|
-          previous = chain
-          chain = build_around_wrapper(hook, previous)
-        end
-        chain
-      end
-
-      def execute_simple_hook(hook)
-        if hook.is_a?(Proc)
-          # @type var hook: ^(*untyped) -> untyped
-          return instance_exec(&hook)
-        end
-
-        send(hook)
-      end
-
-      def build_around_wrapper(hook, previous)
-        case hook
-        when Proc
-          arguments = around_arguments(hook.parameters, previous)
-          lambda do
+        def run_hook(action, hook)
+          if hook.is_a?(Proc)
             # @type var hook: ^(*untyped) -> untyped
-            instance_exec(*arguments, &hook)
+            return action.instance_exec(&hook)
           end
-        else
-          -> { invoke_around_method(hook, previous) }
+
+          action.send(hook)
         end
-      end
 
-      def invoke_around_method(hook, previous)
-        method_object = resolve_method(hook.to_sym)
-        arguments = around_arguments(method_object.parameters, previous)
-        method_object.bind(self).call(*arguments, &previous)
-      end
-
-      # The arguments of an around hook, a block or a method: the chain when it
-      # takes one, the action and the chain when it takes two.
-      def around_arguments(parameters, previous)
-        case Hooks.positional_arity(parameters)
-        when 0 then []
-        when 1 then [previous]
-        else [self, previous]
+        def around_chain(action, &block)
+          chain = block
+          action.class.around_hooks.reverse_each do |hook|
+            previous = chain
+            chain = around_link(action, hook, previous)
+          end
+          chain
         end
-      end
 
-      def resolve_method(method_name)
-        self.class.instance_method(method_name)
-      rescue NameError
-        raise NoMethodError, "Undefined hook method ##{method_name} for #{self.class}"
+        def around_link(action, hook, previous)
+          case hook
+          when Proc
+            arguments = around_arguments(action, hook.parameters, previous)
+            lambda do
+              # @type var hook: ^(*untyped) -> untyped
+              action.instance_exec(*arguments, &hook)
+            end
+          else
+            -> { call_around_method(action, hook, previous) }
+          end
+        end
+
+        def call_around_method(action, hook, previous)
+          method_object = around_method(action, hook.to_sym)
+          arguments = around_arguments(action, method_object.parameters, previous)
+          method_object.bind(action).call(*arguments, &previous)
+        end
+
+        # The arguments of an around hook, a block or a method: the chain when
+        # it takes one, the action and the chain when it takes two.
+        def around_arguments(action, parameters, previous)
+          case positional_arity(parameters)
+          when 0 then []
+          when 1 then [previous]
+          else [action, previous]
+          end
+        end
+
+        def around_method(action, method_name)
+          action.class.instance_method(method_name)
+        rescue NameError
+          raise NoMethodError, "Undefined hook method ##{method_name} for #{action.class}"
+        end
       end
     end
   end

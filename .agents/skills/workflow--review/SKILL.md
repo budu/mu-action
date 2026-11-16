@@ -20,6 +20,9 @@ much as correctness.
 - **Public API**: any change to `call`, `call!`, `Success`, `Failure`, `result`,
   `failure`, the hooks, `record_props`, `context`, `meta`, or the `Result` classes.
   Is it breaking? Is it marked `!` with a `Breaking` changelog entry?
+- **Methods of an action**: an action gets seven documented, overridable methods
+  and no other. Does the change add a method to actions, read `@meta` or `@context`
+  where it should call `meta` or `context`, or break an override that calls `super`?
 - **Constants**: a constant defined under `Mu::Action` hides the application's
   top-level constant of the same name inside every action class. Is a new one
   needed, and is it in the README's list and in the spec that pins it?

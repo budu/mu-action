@@ -1,25 +1,26 @@
 module Mu
   module Action
-    module Failures : _ActionInstance
-      def self.included: (untyped base) -> void
+    module Failures
+      type declarations = ::Hash[untyped, ::Hash[Symbol, untyped]]
+
+      def self.install: (untyped base) -> void
+      def self.result_for: (untyped action, FailureError exception) -> Failure
+      def self.check: (untyped action, untyped error, ::Hash[Symbol, untyped] details, ?origin: untyped) -> void
+      def self.problem: (declarations failures, untyped error, ::Hash[Symbol, untyped] details) -> ::String?
+      def self.detail_problem: (untyped error, ::Hash[Symbol, untyped] types, ::Hash[Symbol, untyped] details) -> ::String?
 
       module ClassMethods : ::Class
-        @own_failures: ::Hash[untyped, ::Hash[Symbol, untyped]]?
+        @own_failures: declarations?
         @failure_sources: ::Array[untyped]?
 
         def failure: (*untyped codes, **untyped details) -> void
-        def failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
+        def failures: () -> declarations
         def declares_failures?: () -> bool
-        def own_failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
-        def failure_sources: () -> ::Array[_ActionClass]
+        def own_failures: () -> declarations
+        def failure_sources: () -> ::Array[untyped]
         def failure_lineage: (?::Array[untyped] seen) -> ::Array[untyped]
         def declare_failure_sources: (?from: untyped, **untyped unexpected) -> void
       end
-
-      def failure_from: (FailureError exception) -> Failure
-      def check_failure: (untyped error, ::Hash[Symbol, untyped] details, ?origin: untyped) -> void
-      def failure_problem: (untyped error, ::Hash[Symbol, untyped] details) -> ::String?
-      def detail_problem: (untyped error, ::Hash[Symbol, untyped] types, ::Hash[Symbol, untyped] details) -> ::String?
     end
   end
 end
