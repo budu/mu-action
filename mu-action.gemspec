@@ -30,12 +30,7 @@ Gem::Specification.new do |spec|
       f.start_with?("lib/mu/") || docs.include?(f)
     end
   end
-  spec.bindir = "exe"
-  spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
   spec.add_dependency "literal", "~> 1.9"
-
-  # For more information and examples about making a new gem, check out our
-  # guide at: https://bundler.io/guides/creating_gem.html
 end
