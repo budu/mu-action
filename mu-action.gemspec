@@ -21,12 +21,13 @@ Gem::Specification.new do |spec|
   spec.metadata["changelog_uri"] = "https://github.com/budu/mu-action/blob/main/CHANGELOG.md"
   spec.metadata["rubygems_mfa_required"] = "true"
 
-  # Only the library, its RBS signatures and the docs are released. sig/kernel.rbs and
-  # sig/literal.rbs are local stubs for Steep.
+  # Only the library and the docs are released. The RBS signatures under sig/ serve the
+  # library's own Steep check: an application could not load them, as they need
+  # declarations for Literal that exist nowhere but in the local stubs.
   docs = %w[README.md LICENSE.txt CHANGELOG.md]
   spec.files = IO.popen(%w[git ls-files -z], chdir: __dir__, err: IO::NULL) do |ls|
     ls.readlines("\x0", chomp: true).select do |f|
-      f.start_with?("lib/mu/", "sig/mu/") || docs.include?(f)
+      f.start_with?("lib/mu/") || docs.include?(f)
     end
   end
   spec.bindir = "exe"
