@@ -210,7 +210,7 @@ RSpec.describe "Mu::Action metadata and property tracking" do
     end
 
     it "records every prop by default" do
-      expect(action_class.props_recording).to be true
+      expect(action_class.call(name: "n").meta[:props].keys).to eq(%i[name age optional])
     end
 
     it "records no props when disabled" do
@@ -235,9 +235,11 @@ RSpec.describe "Mu::Action metadata and property tracking" do
       parent = recording(except: %i[secret])
       child = Class.new(parent) { record_props false }
 
-      expect(parent.props_recording).to eq(except: %i[secret])
-      expect(child.props_recording).to be false
-      expect(Class.new(parent).props_recording).to eq(except: %i[secret])
+      props = ->(action_class) { action_class.call(name: "n", secret: "s").meta[:props] }
+
+      expect(props.call(parent)).to eq(name: "n")
+      expect(props.call(child)).to be_nil
+      expect(props.call(Class.new(parent))).to eq(name: "n")
     end
 
     describe "chosen on the parent after the subclass was defined" do

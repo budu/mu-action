@@ -123,7 +123,7 @@ RSpec.describe "Mu::Action failures" do
     it "accepts any failure when the action declares none" do
       undeclared = action { def call = Failure(:anything, at: :all) }
 
-      expect(undeclared.declares_failures?).to be false
+      expect(undeclared.failures).to be_empty
       expect(undeclared.call.error).to eq(:anything)
     end
 
@@ -157,7 +157,6 @@ RSpec.describe "Mu::Action failures" do
       end
 
       expect(transition.failures).to eq(invalid_transition: { from: Symbol, to: Symbol })
-      expect(transition.failure_sources).to be_empty
       expect(transition.call(from: :draft, to: :draft).details).to eq(from: :draft, to: :draft)
     end
 
@@ -177,7 +176,6 @@ RSpec.describe "Mu::Action failures" do
       parent.failure from: other
 
       expect(child.failures.keys).to contain_exactly(:parent_failure, :added_later, :from_other, :child_failure)
-      expect(child.failure_sources).to eq([other])
       expect(parent.failures.keys).not_to include(:child_failure)
     end
 
@@ -333,7 +331,6 @@ RSpec.describe "Mu::Action failures" do
         def call = Failure(:something_else)
       end
 
-      expect(strict.declares_failures?).to be true
       expect { strict.call }.to raise_error(ArgumentError, /undeclared failure :something_else/)
     end
 

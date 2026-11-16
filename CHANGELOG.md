@@ -12,6 +12,9 @@
 
 ### Changed
 - The message of the `FailureError` raised by `call!` or `run!` names the action and the keys of the details, as in `CreateUser failed: invalid (details: errors)`. It was the error alone. The values of the details are not shown.
+- An action class gets twelve class methods and no other: `call`, `call!`, `result`, `before`, `after`, `around`, `before_hooks`, `after_hooks`, `around_hooks`, `failure`, `failures` and `record_props`. The README documents them. The undocumented `own_failures`, `failure_sources`, `failure_lineage`, `declares_failures?` and `props_recording` are gone, and a class method of an action with one of those names, or named `register_hook`, no longer replaces part of the library.
+- `before`, `after`, `around`, `failure` and `record_props` return `nil`. They returned internal lists.
+- `before_hooks`, `after_hooks` and `around_hooks` return a new list each time, for inspection: changing it does not change the hooks that run.
 - Hooks, failure checks and metadata recording no longer add methods to an action. An action gets seven methods from `Mu::Action` (`meta`, `context`, `Success`, `Failure`, `run`, `run!` and the private `initialize_meta`); the README documents them, and each can be overridden with `super`. A method of an action named `with_hooks`, `check_failure` or `resolve_method`, for example, no longer replaces part of the library.
 - A subclass follows its parent class. A hook, a declared failure or a `record_props` choice added to a class after one of its subclasses was defined now applies to that subclass; each used to be copied when the subclass was defined. A parent's hooks always run before those of its subclasses.
 - Literal 1.9 or later is required; 1.7 and 1.8 are no longer supported. CI only tested 1.9, and on 1.7 a prop default could not read `context`.

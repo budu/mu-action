@@ -4,17 +4,18 @@ module Mu
     type prop_names = Symbol | String | ::Array[Symbol | String]
 
     module Metadata
+      RECORDING: Symbol
+
       def self.install: (untyped base) -> void
       def self.recorded_props: (untyped action) -> ::Hash[Symbol, untyped]?
+      def self.record: (untyped action_class, untyped enabled, prop_names? only, prop_names? except) -> nil
+      def self.recording: (untyped action_class) -> props_recording
+      def self.build_recording: (untyped enabled, prop_names? only, prop_names? except) -> props_recording
+      def self.symbolize: (prop_names names) -> ::Array[Symbol]
       def self.known_props: (untyped action, ::Array[Symbol] names, ::Hash[Symbol, untyped] props) -> ::Array[Symbol]
 
-      module ClassMethods : ::Class
-        @props_recording: props_recording
-
-        def record_props: (?bool enabled, ?only: prop_names?, ?except: prop_names?) -> props_recording
-        def props_recording: () -> props_recording
-        def build_props_recording: (untyped enabled, prop_names? only, prop_names? except) -> props_recording
-        def symbolize_prop_names: (prop_names names) -> ::Array[Symbol]
+      module ClassMethods
+        def record_props: (?bool enabled, ?only: prop_names?, ?except: prop_names?) -> nil
       end
 
       module Lifecycle

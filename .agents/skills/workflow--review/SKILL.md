@@ -23,6 +23,9 @@ much as correctness.
 - **Methods of an action**: an action gets seven documented, overridable methods
   and no other. Does the change add a method to actions, read `@meta` or `@context`
   where it should call `meta` or `context`, or break an override that calls `super`?
+- **Class methods of an action**: an action class gets twelve documented class
+  methods and no other. Does the change add one, or read a declaration through a
+  class method where it should use the function of the feature module?
 - **Constants**: a constant defined under `Mu::Action` hides the application's
   top-level constant of the same name inside every action class. Is a new one
   needed, and is it in the README's list and in the spec that pins it?
