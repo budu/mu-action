@@ -3,9 +3,29 @@
 
 require "bundler/setup"
 require "mu/action"
+require "stringio"
 
-# You can add fixtures and/or initialization code here to make experimenting
-# with your gem easier. You can also use a different console, if you like.
+# Run the README examples, so that their classes are there to experiment with.
+# What the examples print is not shown.
+load File.expand_path("test_readme_examples", __dir__)
+
+examples =
+  begin
+    console_output = $stdout
+    $stdout = StringIO.new
+    ReadmeExamples.call
+  ensure
+    $stdout = console_output
+  end
+
+case examples
+in Mu::Action::Success(value: { classes: })
+  puts "README examples loaded: #{classes.join(", ")}"
+in Mu::Action::Failure(error: :example_failed, details: { block:, error: })
+  ReadmeExamples.report(block, error)
+in Mu::Action::Failure(error:)
+  warn "README examples not loaded: #{error}"
+end
 
 require "irb"
 IRB.start(__FILE__)

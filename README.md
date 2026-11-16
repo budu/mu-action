@@ -430,7 +430,7 @@ After checking out the repo, run `bin/setup` to install dependencies. Then, run 
 bundle exec rspec
 ```
 
-You can also run `bin/console` for an interactive prompt to experiment with the gem.
+You can also run `bin/console` for an interactive prompt to experiment with the gem. The classes of the examples in this README are loaded in it.
 
 To install this gem onto your local machine, run `bundle exec rake install`.
 
