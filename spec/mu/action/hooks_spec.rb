@@ -423,6 +423,32 @@ RSpec.describe "Mu::Action hooks" do
       expect(child_result.meta).to include(child_only: true, parent_only: true)
     end
 
+    it "follows the hooks added to the parent after the subclass was defined" do
+      child_class
+      parent_class.before { meta[:late_before] = true }
+      parent_class.after { meta[:late_after] = true }
+      parent_class.around { |chain| chain.call.tap { meta[:late_around] = true } }
+
+      expect(child_class.call(name: "Test").meta).to include(late_before: true, late_after: true, late_around: true)
+    end
+
+    it "runs the hooks of the parent before its own, whenever they were added" do
+      order = []
+      child_class.before { order << :child }
+      parent_class.before { order << :parent_added_later }
+
+      child_class.call(name: "Test")
+
+      expect(order).to eq(%i[parent_added_later child])
+    end
+
+    it "does not rely on the inherited hook of the parent class" do
+      parent_class.define_singleton_method(:inherited) { |_subclass| nil }
+      silent_child = Class.new(parent_class)
+
+      expect(silent_child.call(name: "Test").meta).to include(parent_before: true, parent_around: true)
+    end
+
     it "keeps the after and around hooks of a child out of its parent" do
       child_class.after { meta[:child_only_after] = true }
       child_class.around { |chain| chain.call.tap { meta[:child_only_around] = true } }

@@ -356,6 +356,24 @@ assert SignIn.call(email: "jane@example.com", password: "secret").meta[:props] =
 
 A subclass inherits the choice. Every name must be a prop of the interactor: one that is not raises an `ArgumentError` when the interactor is called, so a misspelled name cannot leave a secret recorded.
 
+### Subclasses
+
+A subclass has the hooks of its parent class, followed by its own. It also has its parent's declared failures, and its `record_props` choice unless it makes its own. These follow the parent: a hook added to a parent class applies to its subclasses whenever it is added.
+
+```ruby
+class ApplicationAction
+  include Mu::Action
+end
+
+class Publish < ApplicationAction
+  def call = Success(meta[:checked])
+end
+
+ApplicationAction.before { meta[:checked] = true }
+
+assert Publish.call! == true
+```
+
 ### Context
 
 Information about who is calling and from where, such as the actor, the account or the channel, goes in `context` rather than in props. It's available in hooks and in `call`, and it's recorded in `meta[:context]`. It can be any object.

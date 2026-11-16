@@ -168,6 +168,29 @@ RSpec.describe "Mu::Action failures" do
       expect(child.failures.keys).to eq(%i[parent_failure child_failure])
       expect(parent.failures.keys).to eq(%i[parent_failure])
     end
+
+    it "follows the declarations added to the parent after the subclass was defined" do
+      parent = action { failure :parent_failure }
+      child = Class.new(parent) { failure :child_failure }
+      other = action { failure :from_other }
+      parent.failure :added_later
+      parent.failure from: other
+
+      expect(child.failures.keys).to contain_exactly(:parent_failure, :added_later, :from_other, :child_failure)
+      expect(child.failure_sources).to eq([other])
+      expect(parent.failures.keys).not_to include(:child_failure)
+    end
+
+    it "checks the failures of a subclass once its parent declares one" do
+      parent = action { def call = Failure(:anything) }
+      child = Class.new(parent)
+
+      expect(child.call.error).to eq(:anything)
+
+      parent.failure :something_else
+
+      expect { child.call }.to raise_error(ArgumentError, /undeclared failure :anything/)
+    end
   end
 
   describe "on_undeclared_failure" do

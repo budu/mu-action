@@ -24,8 +24,9 @@ much as correctness.
   top-level constant of the same name inside every action class. Is a new one
   needed, and is it in the README's list and in the spec that pins it?
 - **Class-level state and inheritance**: hooks, declared failures, and prop recording
-  live on the class and are copied in each feature's `inherited`. New class-level
-  state must be copied too, and a subclass must not modify its parent.
+  are stored on the class that declares them and combined with the parent's when
+  read. New class-level state must work the same way: nothing copied on `inherited`,
+  a subclass follows later changes to its parent and never modifies it.
 - **Literal**: the `meta` and `context` props are declared when `Mu::Action` is
   included and their names are reserved; nothing may change a class when it is
   instantiated. Nil handling: `_Any` rejects nil, and a nil `default:` means no

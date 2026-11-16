@@ -4,21 +4,21 @@ module Mu
       def self.included: (untyped base) -> void
       def self.positional_arity: (::Array[untyped] parameters) -> Integer
 
-      module ClassMethods
+      module ClassMethods : ::Class
+        @own_hooks: ::Hash[Symbol, ::Array[untyped]]?
+
         def around: (*Symbol) ?{ (*untyped) -> untyped } -> ::Array[untyped]
         def before: (*Symbol) ?{ (*untyped) -> untyped } -> ::Array[untyped]
         def after: (*Symbol) ?{ (*untyped) -> untyped } -> ::Array[untyped]
         def around_hooks: () -> ::Array[untyped]
         def before_hooks: () -> ::Array[untyped]
         def after_hooks: () -> ::Array[untyped]
-        def register_hook: (untyped collection, untyped method_names, ::Proc? block, name: Symbol) -> untyped
+        def own_hooks: (Symbol name) -> ::Array[untyped]
+        def parent_hooks: (Symbol reader) -> ::Array[untyped]
+        def register_hook: (untyped method_names, ::Proc? block, name: Symbol) -> untyped
         def normalize_hook_inputs: (untyped method_names, ::Proc? block, name: Symbol) -> untyped
         def ensure_valid_hook_inputs: (untyped method_names, ::Proc? block, name: Symbol) -> void
         def symbolize_hook_names: (untyped method_names, name: Symbol) -> ::Array[Symbol]
-      end
-
-      module Inheritance : ClassMethods
-        def inherited: (untyped subclass) -> void
       end
 
       def with_hooks: () { () -> Result } -> Result

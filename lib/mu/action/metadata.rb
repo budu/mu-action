@@ -35,7 +35,16 @@ module Mu
           @props_recording = build_props_recording(enabled, only, except)
         end
 
-        def props_recording = (defined?(@props_recording) ? @props_recording : true)
+        # The choice of this class, or else the one of its parent class. It is
+        # worked out when read, so that a choice made on a parent class reaches
+        # its subclasses whenever it is made.
+        def props_recording
+          return @props_recording if defined?(@props_recording)
+
+          # @type var parent: untyped
+          parent = superclass
+          parent.respond_to?(:props_recording) ? parent.props_recording : true
+        end
 
         private
 
@@ -61,8 +70,7 @@ module Mu
         end
       end
 
-      # Initializes the metadata of each new action, and passes the props
-      # recording of a class on to its subclasses.
+      # Initializes the metadata of each new action.
       module Lifecycle
         # The metadata is initialized here and not in #initialize, because the
         # initializer that Literal generates for a subclass with its own props
@@ -71,11 +79,6 @@ module Mu
           instance = super
           instance.send(:initialize_meta)
           instance
-        end
-
-        def inherited(subclass)
-          super
-          subclass.instance_variable_set(:@props_recording, props_recording)
         end
       end
 
