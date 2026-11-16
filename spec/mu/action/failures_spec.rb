@@ -385,4 +385,55 @@ RSpec.describe "Mu::Action failures" do
       expect(seen).to eq([:invalid])
     end
   end
+
+  describe "propagation through run!" do
+    let(:inner) do
+      action { def call = Failure(:inner_failed, why: "no") }
+    end
+
+    def running(inner, &declarations)
+      action do
+        class_eval(&declarations) if declarations
+        define_method(:call) { Success(inner.new.run!.value) }
+      end
+    end
+
+    it "raises a FailureError that carries the failure" do
+      expect { inner.new.run! }.to raise_error(Mu::Action::FailureError) do |error|
+        expect(error.error).to eq(:inner_failed)
+        expect(error.details).to eq(why: "no")
+        expect(error.failure.meta[:class]).to eq(inner)
+        expect(error.cause).to be_a(Mu::Action::FailureError)
+      end
+    end
+
+    it "returns the Success when the action succeeds" do
+      succeeding = action { def call = Success(:done) }
+
+      expect(succeeding.new.run!).to be_a(Mu::Action::Success).and have_attributes(value: :done)
+    end
+
+    it "makes the failure of the inner action the failure of the outer one, with its cause" do
+      outer = running(inner)
+      result = outer.call
+
+      expect(result.error).to eq(:inner_failed)
+      expect(result.details).to eq(why: "no")
+      expect(result.meta[:class]).to eq(outer)
+      expect(result.meta[:cause].meta[:class]).to eq(inner)
+    end
+
+    it "is checked against the failures the outer action declares" do
+      outer = running(inner) { failure :other }
+
+      expect { outer.call }.to raise_error(ArgumentError, /undeclared failure :inner_failed/)
+    end
+
+    it "accepts the failures of a from: action" do
+      source = inner
+      outer = running(inner) { failure from: source }
+
+      expect(outer.call.error).to eq(:inner_failed)
+    end
+  end
 end

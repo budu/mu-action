@@ -83,15 +83,7 @@ module Mu
 
       def call(...) = new(...).run
 
-      def call!(...)
-        result = new(...).run
-        case result
-        in Success(value:)
-          value
-        in Failure(error:, details:, meta:)
-          raise FailureError.new(error, details:, failure: result), cause: meta[:failure_error]
-        end
-      end
+      def call!(...) = new(...).run!.value
 
       def result(type)
         success_class = Class.new(::Mu::Action::Success) do
@@ -126,16 +118,22 @@ module Mu
     end
     # rubocop:enable Naming/MethodName
 
-    # Runs the action and returns its result, a Success or a Failure.
+    # Runs the action and returns its result, a Success or a Failure: sets the
+    # context, then runs the hooks around the call.
     def run
-      run!
+      Context.with(self) { Hooks.run(self) { Action.own_result(self, call, "call") } }
     rescue FailureError => e
       Failures.result_for(self, e)
     end
 
-    # Runs the action and returns its Success, or raises a FailureError.
+    # Runs the action and returns its Success, or raises a FailureError that
+    # carries its Failure. An action that calls another one this way takes on
+    # its failure, as with the call! of the class.
     def run!
-      Context.with(self) { Hooks.run(self) { Action.own_result(self, call, "call") } }
+      result = run
+      return result unless result.is_a?(Failure)
+
+      raise FailureError.new(result.error, details: result.details, failure: result), cause: result.meta[:failure_error]
     end
 
     private

@@ -365,8 +365,8 @@ Including `Mu::Action` gives an interactor these methods and no other. Hooks, fa
 - `Failure(error, **details)`: checks the failure against the declared ones, then raises, so that nothing after it runs.
 - `meta`: the metadata hash, which the result carries.
 - `context`: what the caller passed as `context:`, or the context of the calling interactor.
-- `run`: runs the interactor and returns its result, a `Success` or a `Failure`. `MyAction.call(...)` is `MyAction.new(...).run`.
-- `run!`: runs the interactor and returns its `Success`, or raises a `Mu::Action::FailureError`. It sets the context and runs the hooks around `call`.
+- `run`: runs the interactor and returns its result, a `Success` or a `Failure`. It sets the context and runs the hooks around `call`. `MyAction.call(...)` is `MyAction.new(...).run`.
+- `run!`: calls `run` and returns its `Success`, or raises a `Mu::Action::FailureError` that carries the `Failure`. `MyAction.call!(...)` is `MyAction.new(...).run!.value`.
 - `initialize_meta` (private): fills in `meta` when the interactor is built.
 
 Each of them can be overridden, with `super` for the original behavior:
