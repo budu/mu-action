@@ -93,7 +93,9 @@ module Mu
       def with_hooks(&)
         run_before_hooks
         call_chain = build_around_chain(&)
-        result = call_chain.call
+        # An around hook can replace the result, so what the chain returns is
+        # checked like what the call returns.
+        result = own_result(call_chain.call, "an around hook")
         run_after_hooks
         result
       end

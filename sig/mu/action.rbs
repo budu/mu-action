@@ -15,6 +15,7 @@ module Mu
       def class: () -> _ActionClass
       def run: () -> ::Mu::Action::Result
       def run!: () -> ::Mu::Action::Result
+      def own_result: (untyped value, ::String source) -> ::Mu::Action::Success
     end
 
     interface _ActionClass
@@ -53,5 +54,6 @@ module Mu
     def run: () -> Result
     def run!: () -> Result
     def call: () -> untyped
+    def own_result: (untyped value, ::String source) -> Success
   end
 end

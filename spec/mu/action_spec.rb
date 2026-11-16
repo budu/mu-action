@@ -194,6 +194,115 @@ RSpec.describe Mu::Action do
     end
   end
 
+  describe "what call returns" do
+    def returning(&body)
+      Class.new do
+        include Mu::Action
+
+        define_method(:call, &body)
+      end
+    end
+
+    it "must be built with Success" do
+      raw = returning { 42 }
+
+      expect { raw.call }.to raise_error(TypeError, /call returned 42\. It must return Success/)
+      expect { raw.call! }.to raise_error(TypeError, /call returned 42/)
+    end
+
+    it "cannot be nil, as when a branch forgets its Success" do
+      expect { returning { nil }.call }.to raise_error(TypeError, /call returned nil/)
+    end
+
+    it "cannot get around the result type" do
+      typed = Class.new do
+        include Mu::Action
+
+        result String
+
+        def call = 42
+      end
+
+      expect { typed.call }.to raise_error(TypeError, /call returned 42/)
+    end
+
+    it "cannot be the result of another action" do
+      other = returning { Success(42) }
+      delegating = returning { other.call }
+
+      expect { delegating.call }
+        .to raise_error(TypeError, /call returned the result of another action.*Success\(OtherAction\.call!/)
+    end
+
+    it "takes the value of another action through Success and call!" do
+      other = returning { Success(42) }
+      delegating = returning { Success(other.call!) }
+      result = delegating.call
+
+      expect(result.value).to eq(42)
+      expect(result.meta[:class]).to eq(delegating)
+    end
+
+    describe "when it is the Failure of another action" do
+      let(:log) { [] }
+      let(:inner) do
+        Class.new do
+          include Mu::Action
+
+          def call = Failure(:inner_failed, reason: "no")
+        end
+      end
+      let(:outer) do
+        inner_class = inner
+        events = log
+        Class.new do
+          include Mu::Action
+
+          around do |chain|
+            chain.call.tap { events << :committed }
+          rescue Mu::Action::FailureError
+            events << :rolled_back
+            raise
+          end
+          after { events << :after_hook }
+
+          define_method(:call) do
+            result = inner_class.call
+            return result if result.failure?
+
+            Success(:ok)
+          end
+        end
+      end
+
+      it "becomes the failure of the action, as with call!" do
+        result = outer.call
+
+        expect(result).to be_a(Mu::Action::Failure)
+        expect(result.error).to eq(:inner_failed)
+        expect(result.details).to eq(reason: "no")
+        expect(result.meta[:class]).to eq(outer)
+        expect(result.meta[:cause].meta[:class]).to eq(inner)
+      end
+
+      it "reaches the around hooks as an exception and skips the after hooks" do
+        outer.call
+
+        expect(log).to eq([:rolled_back])
+      end
+
+      it "is checked against the failures the action declares" do
+        outer.failure :something_else
+
+        expect { outer.call }.to raise_error(ArgumentError, /undeclared failure :inner_failed/)
+      end
+
+      it "raises from call!" do
+        expect { outer.call! }.to raise_error(Mu::Action::FailureError) { expect(_1.error).to eq(:inner_failed) }
+      end
+    end
+  end
+
   describe "inheritance" do
     let(:parent_class) do
       Class.new do

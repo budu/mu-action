@@ -66,6 +66,27 @@ A `Success` result contains the `value` returned by the interactor, while a `Fai
 
 A failure will return immediately.
 
+`call` must return the `Success(...)` it built, or call `Failure(...)`. Anything else raises a `TypeError`, so a branch that forgets its `Success` cannot pass for a result:
+
+```ruby
+class Forgetful
+  include Mu::Action
+
+  def call = 42
+end
+
+error =
+  begin
+    Forgetful.call
+  rescue TypeError => e
+    e
+  end
+
+assert error.message.include?("call returned 42. It must return Success(...), or call Failure(...)")
+```
+
+To use the value of another interactor, wrap it: `Success(Other.call!(...))`. Returning the `Failure` of another interactor works like `call!`: it becomes the failure of this one.
+
 Inside an action class, the constants of `Mu::Action` come before top-level constants with the same name: `Result`, `Success`, `Failure`, `FailureError`, `Context`, `Metadata`, `Hooks`, `Failures`, `ClassMethods`, `VERSION` and `CONTEXT_KEY`. If your application has its own `Result` or `Context` class, for example, write `::Result` or `::Context` inside an action.
 
 ### Calling Interactors
@@ -160,6 +181,8 @@ end
 ```
 
 An around hook takes the chain, or the action and the chain, whether it is a block or a method: `around { |chain| ... }` works like `def wrap_in_transaction(chain)`, and a method can take `(action, chain)` like the block above. A method can also take no argument and use `yield`.
+
+An around hook returns the result of the chain. It can also return its own `Success(...)`, to replace the result or to skip the call; anything else raises a `TypeError`.
 
 ### Custom Result Types
 
