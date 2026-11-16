@@ -178,6 +178,67 @@ RSpec.describe Mu::Action do
     end
   end
 
+  describe "the class methods of an action" do
+    it "are a known list" do
+      plain = Class.new { extend Literal::Properties }
+
+      expect(action_class.public_methods - plain.public_methods).to contain_exactly(
+        :call, :call!, :result, :before, :after, :around, :before_hooks, :after_hooks, :around_hooks,
+        :failure, :failures, :record_props
+      )
+      expect(action_class.private_methods - plain.private_methods).to be_empty
+    end
+
+    it "leave every other name to the action class" do
+      names = %i[register_hook own_hooks own_failures failure_sources declares_failures? props_recording]
+      busy = Class.new do
+        include Mu::Action
+
+        names.each { |name| define_singleton_method(name) { |*| raise "#{name} is the class's own" } }
+
+        prop :secret, String, default: "s"
+
+        record_props false
+        failure :refused
+        before { meta[:hooked] = true }
+
+        def call = Failure(:refused)
+      end
+
+      result = busy.call
+
+      expect(result.error).to eq(:refused)
+      expect(result.meta).to include(hooked: true)
+      expect(result.meta).not_to have_key(:props)
+    end
+
+    it "list the hooks of the class, those of its parent first" do
+      parent = Class.new do
+        include Mu::Action
+
+        before :check
+        around { |chain| chain.call.tap { meta[:wrapped] = true } }
+      end
+      child = Class.new(parent) do
+        before :prepare
+        after :notify
+      end
+
+      expect(child.before_hooks).to eq(%i[check prepare])
+      expect(child.after_hooks).to eq(%i[notify])
+      expect(child.around_hooks).to contain_exactly(an_instance_of(Proc))
+      expect(parent.before_hooks).to eq(%i[check])
+    end
+
+    it "do not let the lists of hooks change the hooks that run" do
+      action_class.before { meta[:ran] = true }
+      action_class.before_hooks.clear
+      action_class.define_singleton_method(:before_hooks) { [] }
+
+      expect(action_class.call(name: "Test").meta).to include(ran: true)
+    end
+  end
+
   describe "the methods of an action" do
     it "are a known list" do
       plain = Class.new { extend Literal::Properties }.new

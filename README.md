@@ -446,6 +446,35 @@ assert result.meta[:props] == { rows: "0 rows" }
 
 Two rules apply to an override. `meta` must return the same hash on every call, because hooks write to it and the result shares it. `Success` must return what `super` built, because `call` has to return the result of its own interactor.
 
+The class of an interactor gets these methods, and no other:
+
+- `call(...)` and `call!(...)`: build the interactor and run it.
+- `result(type)`: the type of the value of its `Success`.
+- `before`, `after`, `around`: register hooks.
+- `before_hooks`, `after_hooks`, `around_hooks`: list the hooks of the class, those of its parent class first. Each hook is a block or the name of a method. These lists are for inspection: changing what they return does not change the hooks that run.
+- `failure`: declares failures.
+- `failures`: the declared failures, with the types of their details.
+- `record_props`: chooses the props recorded in the metadata.
+
+```ruby
+class Audited
+  include Mu::Action
+
+  before :check_access
+  after { meta[:audited] = true }
+
+  def call = Success(:done)
+
+  private
+
+  def check_access = nil
+end
+
+assert Audited.before_hooks == [:check_access]
+assert Audited.after_hooks.size == 1
+assert Audited.around_hooks.empty?
+```
+
 ### Subclasses
 
 A subclass has the hooks of its parent class, followed by its own. It also has its parent's declared failures, and its `record_props` choice unless it makes its own. These follow the parent: a hook added to a parent class applies to its subclasses whenever it is added.

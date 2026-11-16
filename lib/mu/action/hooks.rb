@@ -8,6 +8,10 @@ module Mu
     # @api private Applications use what this module adds to action classes,
     #   never the module itself.
     module Hooks
+      # The instance variable of an action class that holds the hooks it
+      # registers itself, by kind.
+      STORE = :@mu_action_hooks
+
       def self.install(base)
         base.extend(ClassMethods)
       end
@@ -16,12 +20,30 @@ module Mu
       # the before hooks, the around hooks wrapped around the block, then the
       # after hooks. Hooks run in the action, with instance_exec or send.
       def self.run(action, &)
-        action.class.before_hooks.each { run_hook(action, _1) }
+        of(action.class, :before).each { run_hook(action, _1) }
         # An around hook can replace the result, so what the chain returns is
         # checked like what the call returns.
         result = Action.own_result(action, around_chain(action, &).call, "an around hook")
-        action.class.after_hooks.each { run_hook(action, _1) }
+        of(action.class, :after).each { run_hook(action, _1) }
         result
+      end
+
+      # The hooks of one kind of an action class: those of its parent class,
+      # followed by its own. They are worked out when read, so that a hook added
+      # to a parent class reaches its subclasses whenever it is added.
+      def self.of(action_class, kind)
+        parent = Action.parent(action_class)
+        inherited = parent ? of(parent, kind) : [] #: ::Array[untyped]
+        inherited + own(action_class, kind)
+      end
+
+      # Registers hooks of one kind on an action class: a block, or the names
+      # of methods of the action.
+      def self.register(action_class, kind, method_names, block)
+        hooks = block ? [checked_block(kind, method_names, block)] : hook_names(kind, method_names)
+        store = action_class.instance_variable_get(STORE) || {}
+        action_class.instance_variable_set(STORE, store.merge(kind => [*store[kind], *hooks]))
+        nil
       end
 
       # How many positional arguments a hook takes, from its parameters. A hook
@@ -32,78 +54,50 @@ module Mu
         parameters.count { |type, _| %i[req opt].include?(type) }
       end
 
-      # Class methods that register hooks, as blocks or as method names.
-      #
-      # A class keeps the hooks it registers itself. The hooks of an action are
-      # those of its parent class followed by its own, worked out when they are
-      # read, so that a hook added to a parent reaches its subclasses whenever
-      # it is added.
+      # Class methods that register hooks and list them.
       #
       # @api public
       module ClassMethods
+        def before(*method_names, &block) = Hooks.register(self, :before, method_names, block)
+        def after(*method_names, &block) = Hooks.register(self, :after, method_names, block)
+
         # An around hook takes the chain, or the action and the chain, and calls
         # the chain to continue. A method can also take nothing and yield.
-        def around(*method_names, &block)
-          if block && Hooks.positional_arity(block.parameters).zero?
-            raise ArgumentError, "an around block takes the chain, or the action and the chain"
-          end
+        def around(*method_names, &block) = Hooks.register(self, :around, method_names, block)
 
-          register_hook(method_names, block, name: :around)
-        end
-
-        def before(*method_names, &block) = register_hook(method_names, block, name: :before)
-        def after(*method_names, &block) = register_hook(method_names, block, name: :after)
-
-        def around_hooks = parent_hooks(:around_hooks) + own_hooks(:around)
-        def before_hooks = parent_hooks(:before_hooks) + own_hooks(:before)
-        def after_hooks = parent_hooks(:after_hooks) + own_hooks(:after)
-
-        private
-
-        def own_hooks(name) = @own_hooks&.fetch(name, nil) || []
-
-        def parent_hooks(reader)
-          # @type var parent: untyped
-          parent = superclass
-          parent.respond_to?(reader) ? parent.public_send(reader) : []
-        end
-
-        def register_hook(method_names, block, name:)
-          ensure_valid_hook_inputs(method_names, block, name:)
-          additions = normalize_hook_inputs(method_names, block, name:)
-          hooks = (@own_hooks ||= {}) #: ::Hash[Symbol, ::Array[untyped]]
-          (hooks[name] ||= []).concat(additions)
-        end
-
-        def normalize_hook_inputs(method_names, block, name:)
-          if block
-            [block]
-          else
-            symbolize_hook_names(method_names, name:)
-          end
-        end
-
-        def ensure_valid_hook_inputs(method_names, block, name:)
-          return unless block && method_names.any?
-
-          raise ArgumentError, "#{name} hooks accept either a block or method names, not both"
-        end
-
-        def symbolize_hook_names(method_names, name:)
-          raise ArgumentError, "#{name} hook requires a block or method name" if method_names.empty?
-
-          method_names.map do |method_name|
-            unless method_name.respond_to?(:to_sym)
-              raise ArgumentError, "Invalid #{name} hook identifier: #{method_name.inspect}"
-            end
-
-            method_name.to_sym
-          end
-        end
+        # The hooks of the class, those of its parent class first. Each one is
+        # a block or the name of a method. They are for inspection: changing
+        # what these methods return does not change the hooks that run.
+        def before_hooks = Hooks.of(self, :before)
+        def after_hooks = Hooks.of(self, :after)
+        def around_hooks = Hooks.of(self, :around)
       end
 
       class << self
         private
+
+        def own(action_class, kind)
+          action_class.instance_variable_get(STORE)&.fetch(kind, nil) || []
+        end
+
+        def checked_block(kind, method_names, block)
+          raise ArgumentError, "#{kind} hooks accept either a block or method names, not both" if method_names.any?
+          if kind == :around && positional_arity(block.parameters).zero?
+            raise ArgumentError, "an around block takes the chain, or the action and the chain"
+          end
+
+          block
+        end
+
+        def hook_names(kind, method_names)
+          raise ArgumentError, "#{kind} hook requires a block or method name" if method_names.empty?
+
+          method_names.map do |name|
+            raise ArgumentError, "Invalid #{kind} hook identifier: #{name.inspect}" unless name.respond_to?(:to_sym)
+
+            name.to_sym
+          end
+        end
 
         def run_hook(action, hook)
           if hook.is_a?(Proc)
@@ -116,7 +110,7 @@ module Mu
 
         def around_chain(action, &block)
           chain = block
-          action.class.around_hooks.reverse_each do |hook|
+          of(action.class, :around).reverse_each do |hook|
             previous = chain
             chain = around_link(action, hook, previous)
           end

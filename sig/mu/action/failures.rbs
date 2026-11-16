@@ -3,23 +3,26 @@ module Mu
     module Failures
       type declarations = ::Hash[untyped, ::Hash[Symbol, untyped]]
 
+      DECLARED: Symbol
+      SOURCES: Symbol
+
       def self.install: (untyped base) -> void
       def self.result_for: (untyped action, FailureError exception) -> Failure
       def self.check: (untyped action, untyped error, ::Hash[Symbol, untyped] details, ?origin: untyped) -> void
+      def self.declare: (untyped action_class, ::Array[untyped] codes, ::Hash[Symbol, untyped] details) -> nil
+      def self.of: (untyped action_class) -> declarations
+      def self.declared?: (untyped action_class) -> bool
+      def self.own: (untyped action_class) -> declarations
+      def self.own_sources: (untyped action_class) -> ::Array[untyped]
+      def self.sources: (untyped action_class) -> ::Array[untyped]
+      def self.lineage: (untyped action_class, ?::Array[untyped] seen) -> ::Array[untyped]
+      def self.declare_sources: (untyped action_class, ?from: untyped, **untyped unexpected) -> nil
       def self.problem: (declarations failures, untyped error, ::Hash[Symbol, untyped] details) -> ::String?
       def self.detail_problem: (untyped error, ::Hash[Symbol, untyped] types, ::Hash[Symbol, untyped] details) -> ::String?
 
-      module ClassMethods : ::Class
-        @own_failures: declarations?
-        @failure_sources: ::Array[untyped]?
-
-        def failure: (*untyped codes, **untyped details) -> void
+      module ClassMethods
+        def failure: (*untyped codes, **untyped details) -> nil
         def failures: () -> declarations
-        def declares_failures?: () -> bool
-        def own_failures: () -> declarations
-        def failure_sources: () -> ::Array[untyped]
-        def failure_lineage: (?::Array[untyped] seen) -> ::Array[untyped]
-        def declare_failure_sources: (?from: untyped, **untyped unexpected) -> void
       end
     end
   end

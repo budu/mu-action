@@ -47,6 +47,15 @@ module Mu
       [Metadata, Context, Hooks, Failures].each { _1.install(base) }
     end
 
+    # The parent class of an action class, when it is an action class too. What
+    # a class declares is combined with what its parent declares through it.
+    #
+    # @api private
+    def self.parent(action_class)
+      parent = action_class.superclass
+      parent if parent&.include?(self)
+    end
+
     # The Success an action built, which is what its call and its around hooks
     # must return. A Failure can only be returned by another action: it is
     # raised as the FailureError of a call! would be, so that it reaches the

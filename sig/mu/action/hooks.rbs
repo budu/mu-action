@@ -1,9 +1,18 @@
 module Mu
   module Action
     module Hooks
+      type kind = :before | :after | :around
+
+      STORE: Symbol
+
       def self.install: (untyped base) -> void
-      def self.positional_arity: (::Array[untyped] parameters) -> Integer
       def self.run: (untyped action) { () -> untyped } -> Success
+      def self.of: (untyped action_class, kind kind) -> ::Array[untyped]
+      def self.register: (untyped action_class, kind kind, ::Array[untyped] method_names, ::Proc? block) -> nil
+      def self.positional_arity: (::Array[untyped] parameters) -> Integer
+      def self.own: (untyped action_class, kind kind) -> ::Array[untyped]
+      def self.checked_block: (kind kind, ::Array[untyped] method_names, ::Proc block) -> ::Proc
+      def self.hook_names: (kind kind, ::Array[untyped] method_names) -> ::Array[Symbol]
       def self.run_hook: (untyped action, ::Proc | ::Symbol hook) -> untyped
       def self.around_chain: (untyped action) { () -> untyped } -> ::Proc
       def self.around_link: (untyped action, ::Proc | ::Symbol hook, ::Proc previous) -> ::Proc
@@ -11,21 +20,13 @@ module Mu
       def self.around_arguments: (untyped action, ::Array[untyped] parameters, ::Proc previous) -> ::Array[untyped]
       def self.around_method: (untyped action, Symbol method_name) -> UnboundMethod
 
-      module ClassMethods : ::Class
-        @own_hooks: ::Hash[Symbol, ::Array[untyped]]?
-
-        def around: (*Symbol) ?{ (*untyped) -> untyped } -> ::Array[untyped]
-        def before: (*Symbol) ?{ (*untyped) -> untyped } -> ::Array[untyped]
-        def after: (*Symbol) ?{ (*untyped) -> untyped } -> ::Array[untyped]
-        def around_hooks: () -> ::Array[untyped]
+      module ClassMethods
+        def before: (*Symbol | String) ?{ (*untyped) -> untyped } -> nil
+        def after: (*Symbol | String) ?{ (*untyped) -> untyped } -> nil
+        def around: (*Symbol | String) ?{ (*untyped) -> untyped } -> nil
         def before_hooks: () -> ::Array[untyped]
         def after_hooks: () -> ::Array[untyped]
-        def own_hooks: (Symbol name) -> ::Array[untyped]
-        def parent_hooks: (Symbol reader) -> ::Array[untyped]
-        def register_hook: (untyped method_names, ::Proc? block, name: Symbol) -> untyped
-        def normalize_hook_inputs: (untyped method_names, ::Proc? block, name: Symbol) -> untyped
-        def ensure_valid_hook_inputs: (untyped method_names, ::Proc? block, name: Symbol) -> void
-        def symbolize_hook_names: (untyped method_names, name: Symbol) -> ::Array[Symbol]
+        def around_hooks: () -> ::Array[untyped]
       end
     end
   end

@@ -10,6 +10,7 @@ module Mu
     def self.on_undeclared_failure=: (failure_handler handler) -> failure_handler
     def self.included: (untyped base) -> void
     def self.own_result: (untyped action, untyped value, ::String source) -> Success
+    def self.parent: (untyped action_class) -> untyped
 
     module ClassMethods
       include Literal::Properties

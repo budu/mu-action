@@ -9,6 +9,11 @@ module Mu
     # @api private Applications use what this module adds to action classes,
     #   never the module itself.
     module Failures
+      # The instance variables of an action class that hold the failures it
+      # declares itself, and the actions it names with from:.
+      DECLARED = :@mu_action_failures
+      SOURCES = :@mu_action_failure_sources
+
       def self.install(base)
         base.extend(ClassMethods)
       end
@@ -28,10 +33,10 @@ module Mu
       # Checks a failure against what the action declares, and hands one that is
       # not allowed to Mu::Action.on_undeclared_failure.
       def self.check(action, error, details, origin: nil)
-        return unless action.class.declares_failures?
-        return if origin && action.class.failure_sources.any? { origin <= _1 }
+        return unless declared?(action.class)
+        return if origin && sources(action.class).any? { origin <= _1 }
 
-        problem = problem(action.class.failures, error, details)
+        problem = problem(of(action.class), error, details)
         return unless problem
 
         case (handler = Mu::Action.on_undeclared_failure)
@@ -40,27 +45,26 @@ module Mu
         end
       end
 
-      def self.problem(failures, error, details)
-        return "undeclared failure #{error.inspect}" unless failures.key?(error)
+      # Declares failures on an action class. With codes, every keyword is a
+      # detail, including one named from. Without a code, from: names the
+      # actions whose failures the action can also return.
+      def self.declare(action_class, codes, details)
+        return declare_sources(action_class, **details) if codes.empty?
+        raise ArgumentError, "details can only be declared for a single failure" if codes.size > 1 && details.any?
 
-        types = failures[error]
-        unexpected = details.keys - types.keys
-        return "unexpected details #{unexpected.inspect} for failure #{error.inspect}" if unexpected.any?
-
-        detail_problem(error, types, details)
-      end
-
-      def self.detail_problem(error, types, details)
-        types.each do |key, type|
-          value = details[key]
-          next if type === value # rubocop:disable Style/CaseEquality
-
-          return "detail #{key.inspect} of failure #{error.inspect} must be #{type.inspect}, got #{value.inspect}"
-        end
+        declared = own(action_class).dup
+        codes.each { declared[_1] = details }
+        action_class.instance_variable_set(DECLARED, declared)
         nil
       end
 
-      private_class_method :problem, :detail_problem
+      # The failures an action class declares, including those of its parent
+      # class and of its from: actions, as a hash of error code to details
+      # types. They are worked out when read, so that a declaration added to a
+      # parent class reaches its subclasses whenever it is added.
+      def self.of(action_class)
+        lineage(action_class).map { own(_1) }.reduce({}, :merge)
+      end
 
       # Class methods that declare and list the failures of an action.
       #
@@ -76,53 +80,39 @@ module Mu
         # With a code, every keyword is a detail, including one named +from+.
         # Without a code, +from:+ names the actions whose failures this action
         # can also return.
-        def failure(*codes, **details)
-          return declare_failure_sources(**details) if codes.empty?
-          raise ArgumentError, "details can only be declared for a single failure" if codes.size > 1 && details.any?
-
-          own = (@own_failures ||= {}) #: ::Hash[untyped, ::Hash[Symbol, untyped]]
-          codes.each { own[_1] = details }
-        end
+        def failure(*codes, **details) = Failures.declare(self, codes, details)
 
         # The declared failures, including those of the parent class and of the
-        # +from:+ actions, as a hash of error code to details types. They are
-        # worked out when read, so that a declaration added to a parent class
-        # reaches its subclasses whenever it is added.
-        def failures
-          failure_lineage.map(&:own_failures).reduce({}, :merge)
-        end
+        # +from:+ actions, as a hash of error code to details types.
+        def failures = Failures.of(self)
+      end
 
-        def declares_failures? = failure_sources.any? || failures.any?
-
-        # The failures this class declares itself.
-        def own_failures = @own_failures || {}
-
-        # The +from:+ actions of this class and of its parent classes.
-        def failure_sources
-          # @type var parent: untyped
-          parent = superclass
-          inherited = parent.respond_to?(:failure_sources) ? parent.failure_sources : [] #: ::Array[untyped]
-          inherited + (@failure_sources || [])
-        end
-
-        # This action preceded by its parent class and by the actions it takes
-        # failures from, each one once, so that actions that name each other do
-        # not recurse forever.
-        #
-        # @api private
-        def failure_lineage(seen = [])
-          return [] if seen.include?(self)
-
-          seen << self
-          # @type var parent: untyped
-          parent = superclass
-          ancestors = parent.respond_to?(:failure_lineage) ? [parent] : [] #: ::Array[untyped]
-          (ancestors + (@failure_sources || [])).flat_map { _1.failure_lineage(seen) } << self
-        end
-
+      class << self
         private
 
-        def declare_failure_sources(from: nil, **unexpected)
+        def declared?(action_class) = sources(action_class).any? || of(action_class).any?
+        def own(action_class) = action_class.instance_variable_get(DECLARED) || {}
+        def own_sources(action_class) = action_class.instance_variable_get(SOURCES) || []
+
+        # The from: actions of an action class and of its parent classes.
+        def sources(action_class)
+          parent = Action.parent(action_class)
+          inherited = parent ? sources(parent) : [] #: ::Array[untyped]
+          inherited + own_sources(action_class)
+        end
+
+        # An action class preceded by its parent class and by the actions it
+        # takes failures from, each one once, so that actions that name each
+        # other do not recurse forever.
+        def lineage(action_class, seen = [])
+          return [] if seen.include?(action_class)
+
+          seen << action_class
+          ancestors = [Action.parent(action_class), *own_sources(action_class)].compact
+          ancestors.flat_map { lineage(_1, seen) } << action_class
+        end
+
+        def declare_sources(action_class, from: nil, **unexpected)
           raise ArgumentError, "failure requires a code or from:" if from.nil? || unexpected.any?
 
           # @type var sources: ::Array[untyped]
@@ -130,8 +120,28 @@ module Mu
           invalid = sources.reject { _1.is_a?(Class) && _1.include?(Mu::Action) }
           raise ArgumentError, "failure from: expects action classes, got #{invalid.inspect}" if invalid.any?
 
-          own = (@failure_sources ||= []) #: ::Array[untyped]
-          own.concat(sources)
+          action_class.instance_variable_set(SOURCES, own_sources(action_class) + sources)
+          nil
+        end
+
+        def problem(failures, error, details)
+          return "undeclared failure #{error.inspect}" unless failures.key?(error)
+
+          types = failures[error]
+          unexpected = details.keys - types.keys
+          return "unexpected details #{unexpected.inspect} for failure #{error.inspect}" if unexpected.any?
+
+          detail_problem(error, types, details)
+        end
+
+        def detail_problem(error, types, details)
+          types.each do |key, type|
+            value = details[key]
+            next if type === value # rubocop:disable Style/CaseEquality
+
+            return "detail #{key.inspect} of failure #{error.inspect} must be #{type.inspect}, got #{value.inspect}"
+          end
+          nil
         end
       end
     end
