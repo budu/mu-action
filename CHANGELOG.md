@@ -15,6 +15,7 @@
 - The library is split into one file per feature under `lib/mu/action/`, and the RBS signatures follow the same layout. Behavior is unchanged. The internal modules `Initializer`, `MetaPropAdder`, `HookPropagator` and `FailureChecking` are replaced by `Context`, `Metadata`, `Hooks` and `Failures`. Like every constant of `Mu::Action`, these names come before top-level constants inside action classes; the README lists them.
 - The README documents the order in which hooks run, and that after hooks only run when the action succeeds.
 - The specs run in random order, and `bin/ci` and CI ignore focused examples.
+- `bin/test_readme_examples` reports a failing example with its line in the README and the code of its block, and `bin/console` loads the classes of the README examples.
 - `bin/check` is renamed `bin/ci`. It runs the checks on every supported Ruby version, using asdf, and `bin/ci --current` runs them on the current Ruby only.
 - Development dependencies updated, including json 3, prism 2, erb 6 and rdoc 8. Steep and RBS stay at 2.0 and 4.1, the last versions that support Ruby 3.2.
 - Development now follows agent skills in `.agents/skills` (commits, pull requests, changelog, dependencies, releases, reviews), and `AGENTS.md` is the single guide; `CLAUDE.md` points to it.

@@ -3,171 +3,148 @@
 
 require "bundler/setup"
 require "mu/action"
-require "fileutils"
 require "optparse"
 
-# TestReadmeExamples is an action that extracts Ruby code blocks from a README file and run
-# them.
-# rubocop:disable Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/AbcSize
-class TestReadmeExamples
+# Runs the Ruby code blocks of the README, so that the documentation cannot drift
+# from the code. Each block runs at the top level, where its README line numbers
+# are kept, so that a failure points at the README.
+#
+#   bin/test_readme_examples                  run every block
+#   bin/test_readme_examples --extract-only   write them to readme_examples.rb instead
+#
+# bin/console loads this file to make the classes of the examples available.
+class ReadmeExamples
   include Mu::Action
 
-  prop :readme_path, String, default: -> { "README.md" }
-  prop :output_file, String, default: -> { "readme_examples.rb" }
-  prop :extract_only, _Boolean, default: -> { false }
+  # A code block, with its file and the line of its first line of code.
+  Block = Struct.new(:path, :line, :code) do
+    def classes = code.scan(/^class (\w+)/).flatten.map(&:to_sym)
+
+    # The line an error comes from: the one in its backtrace, or the one a
+    # syntax error names in its message.
+    def line_of(error)
+      error.backtrace_locations&.find { _1.path == path }&.lineno ||
+        error.message[/#{Regexp.escape(path)}:(\d+)/, 1]&.to_i || line
+    end
+
+    # The code with its line numbers in the file, and an arrow on one line.
+    def listing(marked)
+      code.lines.each.with_index(line).map do |text, number|
+        format("%<mark>s %<number>4d | %<text>s", mark: number == marked ? "→" : " ", number:, text:)
+      end.join
+    end
+  end
+
+  # What the examples refer to without defining it: the assert they use, and
+  # stand-ins for the application classes they mention.
+  SUPPORT = <<~RUBY
+    def assert(condition) = condition || raise("Assertion failed")
+
+    User = Struct.new(:email, :name, :age) do
+      def self.exists?(email:) = email == "existing@example.com"
+      def self.create!(email:, name:, age:) = new(email, name, age)
+    end
+
+    module Rails
+      def self.logger = @logger ||= Class.new { def info(_message) = nil }.new
+    end
+
+    module ActiveRecord
+      class Base
+        def self.transaction = yield
+      end
+    end
+  RUBY
+
+  failure :no_examples, path: String
+  failure :example_failed, block: Block, error: Exception
+
+  prop :readme, String, default: "README.md"
+  prop :extract_to, _Nilable(String)
 
   def call
-    File.read(@readme_path) => content
-    extract_ruby_blocks(content) => ruby_blocks
-    return Failure(:no_ruby_blocks) if ruby_blocks.empty?
+    blocks = extract_blocks
+    Failure(:no_examples, path: @readme) if blocks.empty?
 
-    combined_code = ruby_blocks.map(&:join).join("\n")
-    write_to_file(combined_code)
-    execute_code(combined_code) unless @extract_only
+    @extract_to ? write(blocks) : run_blocks(blocks)
+    Success(blocks: blocks.size, classes: blocks.flat_map(&:classes).uniq)
+  end
 
-    Success(
-      action: @extract_only ? :extracted : :tested,
-      blocks_extracted: ruby_blocks.size,
-      output_file: @output_file,
-      lines_written: combined_code.lines.size
-    )
+  # Prints the block of a failed example, with an arrow on the line that failed.
+  def self.report(block, error)
+    failed = block.line_of(error)
+    puts "❌ #{block.path}:#{failed}: #{error.class}: #{error.message.lines.first&.strip}", "", block.listing(failed)
   end
 
   private
 
-  def extract_ruby_blocks(content)
-    in_ruby_block = false
-    current_block = []
-
-    content.lines.each_with_object([]) do |line, blocks|
-      stripped_line = line.strip
-      if stripped_line == "```ruby"
-        in_ruby_block = true
-        current_block = []
-      elsif stripped_line == "```" && in_ruby_block
-        in_ruby_block = false
-        filtered_block = current_block.reject { _1.strip.start_with?("gem ") || _1.strip.empty? }
-        blocks << filtered_block if filtered_block.any?
-      elsif in_ruby_block
-        current_block << line
+  def extract_blocks
+    blocks = []
+    current = nil
+    File.foreach(@readme).with_index(1) do |line, number|
+      case line.strip
+      when "```ruby" then current = Block.new(@readme, number + 1, +"")
+      when "```" then current = finish(current, blocks)
+      else current.code << code_line(line) if current
       end
     end
+    blocks
   end
 
-  def assert(condition)
-    raise "Assertion failed" unless condition
+  # A Gemfile line is not an example. It is blanked and not dropped, to keep
+  # the line numbers of the block.
+  def code_line(line) = line.strip.start_with?("gem ") ? "\n" : line
+
+  def finish(block, blocks)
+    blocks << block if block && !block.code.strip.empty?
+    nil
   end
 
-  def write_to_file(code)
-    FileUtils.mkdir_p(File.dirname(@output_file))
-    File.write(@output_file, code)
-  end
-
-  def execute_code(code)
-    setup_mocks
-    eval(code, binding, "README examples") # rubocop:disable Security/Eval
-  end
-
-  def setup_mocks
-    # Mock User class for examples
-    unless defined?(User)
-      Object.const_set("User", Class.new do
-        def self.exists?(email:)
-          email == "existing@example.com"
-        end
-
-        def self.create!(email:, name:, age:)
-          new.tap do |user|
-            user.define_singleton_method(:email) { email }
-            user.define_singleton_method(:name) { name }
-            user.define_singleton_method(:age) { age }
-          end
-        end
-      end)
+  def run_blocks(blocks)
+    TOPLEVEL_BINDING.eval(SUPPORT, __FILE__)
+    defined = []
+    blocks.each do |block|
+      # The README defines some classes twice, to show two ways of writing
+      # them. Each definition starts from a new class, not from the previous one.
+      (block.classes & defined).each { Object.send(:remove_const, _1) }
+      defined.concat(block.classes)
+      run_block(block)
     end
+  end
 
-    # Mock Rails for examples
-    unless defined?(Rails)
-      Object.const_set("Rails", Class.new do
-        def self.logger
-          @logger ||= Class.new do
-            def info(msg)
-              puts "[INFO] #{msg}"
-            end
-          end.new
-        end
-      end)
-    end
+  def run_block(block)
+    TOPLEVEL_BINDING.eval(block.code, block.path, block.line)
+  rescue StandardError, ScriptError => e
+    Failure(:example_failed, block:, error: e)
+  end
 
-    # Mock ActiveRecord for examples
-    unless defined?(ActiveRecord)
-      Object.const_set("ActiveRecord", Class.new do
-        const_set("Base", Class.new do
-          def self.transaction
-            puts "[TRANSACTION] Starting transaction"
-            result = yield
-            puts "[TRANSACTION] Transaction completed"
-            result
-          end
-        end)
-      end)
-    end
-
-    # Mock ProfileService for examples
-    return if defined?(ProfileService)
-
-    Object.const_set("ProfileService", Class.new do
-      def self.fetch(_user_id)
-        Class.new do
-          def to_h
-            { id: user_id, name: "Profile Name", email: "profile@example.com" }
-          end
-        end.new
-      end
-    end)
+  def write(blocks)
+    header = "# frozen_string_literal: true\n\nrequire \"mu/action\"\n"
+    sections = blocks.map { "# #{_1.path}:#{_1.line}\n#{_1.code}" }
+    File.write(@extract_to, [header, SUPPORT, *sections].join("\n"))
   end
 end
 
 if __FILE__ == $PROGRAM_NAME
   options = {}
-  OptionParser.new do |opts|
-    opts.banner = "Usage: #{$PROGRAM_NAME} [options]"
-
-    opts.on("--extract-only", "Extract code blocks to file without running them") do
-      options[:extract_only] = true
-    end
-
-    opts.on("-o", "--output FILE", "Output file for extracted code (default: readme_examples.rb)") do |file|
-      options[:output_file] = file
-    end
-
-    opts.on("-r", "--readme FILE", "README file to extract from (default: README.md)") do |file|
-      options[:readme_path] = file
-    end
-
-    opts.on("-h", "--help", "Prints this help") do
-      puts opts
-      exit
-    end
+  output = "readme_examples.rb"
+  OptionParser.new do |parser|
+    parser.banner = "Usage: #{$PROGRAM_NAME} [options]"
+    parser.on("-r", "--readme FILE", "README to read (default: README.md)") { options[:readme] = _1 }
+    parser.on("-o", "--output FILE", "File written by --extract-only (default: #{output})") { output = _1 }
+    parser.on("--extract-only", "Write the examples to a file without running them") { options[:extract_to] = true }
   end.parse!
+  options[:extract_to] &&= output
 
-  case TestReadmeExamples.call(**options)
-  in Mu::Action::Success(value:)
-    case value[:action]
-    when :extracted
-      puts "✅ Extracted #{value[:blocks_extracted]} Ruby code blocks to #{value[:output_file]}"
-      puts "   Total lines written: #{value[:lines_written]}"
-    when :tested
-      puts "✅ Successfully tested #{value[:blocks_extracted]} Ruby code blocks"
-      puts "   Total lines written: #{value[:lines_written]}"
-    end
-  in Mu::Action::Failure(error:)
-    puts "❌ Failed: #{error[:error] || error}"
-    if error[:backtrace]
-      puts "   Backtrace:"
-      error[:backtrace].each { puts "     #{_1}" }
-    end
+  case ReadmeExamples.call(**options)
+  in Mu::Action::Success(value: { blocks: }) if options[:extract_to]
+    puts "✅ Extracted #{blocks} Ruby code blocks to #{options[:extract_to]}"
+  in Mu::Action::Success(value: { blocks: })
+    puts "✅ Successfully tested #{blocks} Ruby code blocks"
+  in Mu::Action::Failure(error: :no_examples, details: { path: })
+    abort "❌ No Ruby code block in #{path}"
+  in Mu::Action::Failure(error: :example_failed, details: { block:, error: })
+    ReadmeExamples.report(block, error)
     exit 1
   end
 end
-# rubocop:enable Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/AbcSize

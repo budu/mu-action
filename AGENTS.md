@@ -34,8 +34,11 @@ are not released.
 - **One spec file**: `bundle exec rspec spec/mu/action/hooks_spec.rb`
 - **Lint**: `bundle exec rubocop -A`
 - **Type check**: `bundle exec steep check`
-- **README examples**: `bin/test_readme_examples` runs every Ruby block of the README;
-  `readme_examples.rb` is its generated output and is not committed.
+- **README examples**: `bin/test_readme_examples` runs every Ruby block of the README
+  and reports a failure with its README line. Blocks run in order at the top level,
+  so an example can use the classes of the ones before it. `--extract-only` writes
+  them to `readme_examples.rb`, which is not committed.
+- **Console**: `bin/console` loads the classes of the README examples.
 
 CI (`.github/workflows/main.yml`) runs `bin/ci --current --verbose` on every supported
 Ruby version, from the minimum in the gemspec to the newest. Its matrix is the list
