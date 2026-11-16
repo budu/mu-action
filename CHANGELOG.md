@@ -13,6 +13,7 @@
 - Literal 1.9 or later is required; 1.7 and 1.8 are no longer supported. CI only tested 1.9, and on 1.7 a prop default could not read `context`.
 - The `meta` and `context` props are declared when `Mu::Action` is included, before the action's own props. They were added the first time the class was instantiated.
 - The library is split into one file per feature under `lib/mu/action/`, and the RBS signatures follow the same layout. Behavior is unchanged. The internal modules `Initializer`, `MetaPropAdder`, `HookPropagator` and `FailureChecking` are replaced by `Context`, `Metadata`, `Hooks` and `Failures`. Like every constant of `Mu::Action`, these names come before top-level constants inside action classes; the README lists them.
+- The README documents the order in which hooks run, and that after hooks only run when the action succeeds.
 - The specs run in random order, and `bin/ci` and CI ignore focused examples.
 - `bin/check` is renamed `bin/ci`. It runs the checks on every supported Ruby version, using asdf, and `bin/ci --current` runs them on the current Ruby only.
 - Development dependencies updated, including json 3, prism 2, erb 6 and rdoc 8. Steep and RBS stay at 2.0 and 4.1, the last versions that support Ruby 3.2.

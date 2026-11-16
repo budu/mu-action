@@ -184,6 +184,29 @@ An around hook takes the chain, or the action and the chain, whether it is a blo
 
 An around hook returns the result of the chain. It can also return its own `Success(...)`, to replace the result or to skip the call; anything else raises a `TypeError`.
 
+Hooks run in this order: the before hooks, then the around hooks wrapped around `call`, then the after hooks. Hooks of one kind run in the order they were declared, and the first around hook declared is the outermost.
+
+```ruby
+class Traced
+  include Mu::Action
+
+  STEPS = []
+
+  before { STEPS << :before }
+  around { |chain| STEPS << :around_start; chain.call.tap { STEPS << :around_end } }
+  after { STEPS << :after }
+
+  def call = Success(STEPS << :call)
+end
+
+Traced.call
+assert Traced::STEPS == %i[before around_start call around_end after]
+```
+
+The before and after hooks run outside the around hooks: a transaction opened by an around hook covers `call`, not what the before and after hooks do.
+
+When the interactor fails or raises, in a before hook, in `call` or in an around hook, everything that would follow is skipped. In particular, the after hooks only run when the interactor succeeds.
+
 ### Custom Result Types
 
 Define typed results for better API contracts:
@@ -396,6 +419,8 @@ assert Greet.call! == "Hello"
 ## Differences from the Interactor Gem
 
 The main difference and the motivation for creating `Mu::Action` is to separate the context into inputs, an output, and metadata. This allows for a more structured approach to handling business logic, making it easier to reason about the flow of data and the state of the application.
+
+Hooks are also ordered differently: in Interactor, the around hooks wrap the before and after hooks, while here the before and after hooks run outside the around hooks.
 
 ## Development
 
