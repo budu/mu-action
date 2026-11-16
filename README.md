@@ -276,6 +276,8 @@ assert result.meta[:cause].meta[:class] == PublishArticle
 
 Because the inner failure is raised as an exception, around hooks such as transactions see it and can roll back.
 
+`failure from:` takes one interactor class or several, and goes on its own line. With an error code, every keyword is a detail, including one named `from`: `failure :invalid_transition, from: Symbol, to: Symbol`.
+
 ### Metadata Tracking
 
 Every interactor automatically tracks metadata including class information and property values:

@@ -4,11 +4,13 @@ module Mu
       def self.included: (untyped base) -> void
 
       module ClassMethods
-        def failure: (*untyped codes, ?from: untyped, **untyped details) -> ::Array[_ActionClass]
+        def failure: (*untyped codes, **untyped details) -> void
         def failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
         def declares_failures?: () -> bool
         def own_failures: () -> ::Hash[untyped, ::Hash[Symbol, untyped]]
         def failure_sources: () -> ::Array[_ActionClass]
+        def failure_lineage: (?::Array[untyped] seen) -> ::Array[untyped]
+        def declare_failure_sources: (?from: untyped, **untyped unexpected) -> void
       end
 
       module Inheritance : ClassMethods
