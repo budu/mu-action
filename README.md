@@ -297,6 +297,14 @@ assert FindNickname.call!(name: "Jane").nil?
 
 Without `result`, an interactor accepts any value, `nil` included.
 
+`result_type` returns the declared type, or `nil` when there is none. A subclass has the type of its parent class, unless it declares its own:
+
+```ruby
+assert PriceQuote.result_type == Quote
+assert Class.new(PriceQuote).result_type == Quote
+assert CreateUser.result_type.nil?
+```
+
 `result` also gives the interactor its own `Success` class, so a `case` can match the success of one interactor in particular:
 
 ```ruby
@@ -492,6 +500,7 @@ The class of an interactor gets these methods, and no other:
 
 - `call(...)` and `call!(...)`: build the interactor and run it.
 - `result(type)`: the type of the value of its `Success`.
+- `result_type`: the type given to `result`, or `nil`.
 - `before`, `after`, `around`: register hooks.
 - `before_hooks`, `after_hooks`, `around_hooks`: list the hooks of the class, those of its parent class first. Each hook is a block or the name of a method. These lists are for inspection: changing what they return does not change the hooks that run.
 - `failure`: declares failures.

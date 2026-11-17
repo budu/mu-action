@@ -102,6 +102,14 @@ module Mu
 
         const_set(:Success, success_class)
       end
+
+      # The type given to result, by the class or by its parent class, or nil
+      # when neither declares one. It is read from the Success class of the
+      # action, so that it is always the type Success checks.
+      def result_type
+        success = const_get(:Success)
+        success.literal_properties[:value].type unless success.equal?(::Mu::Action::Success)
+      end
     end
 
     # The methods below are all that Mu::Action adds to an action, with the
