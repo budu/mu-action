@@ -183,8 +183,8 @@ RSpec.describe Mu::Action do
       plain = Class.new { extend Literal::Properties }
 
       expect(action_class.public_methods - plain.public_methods).to contain_exactly(
-        :call, :call!, :result, :before, :after, :around, :before_hooks, :after_hooks, :around_hooks,
-        :failure, :failures, :record_props
+        :call, :call!, :result, :result_type, :before, :after, :around, :before_hooks, :after_hooks,
+        :around_hooks, :failure, :failures, :record_props
       )
       expect(action_class.private_methods - plain.private_methods).to be_empty
     end
@@ -236,6 +236,40 @@ RSpec.describe Mu::Action do
       action_class.define_singleton_method(:before_hooks) { [] }
 
       expect(action_class.call(name: "Test").meta).to include(ran: true)
+    end
+  end
+
+  describe ".result_type" do
+    it "returns the type given to result" do
+      action_class.result String
+
+      expect(action_class.result_type).to eq(String)
+    end
+
+    it "returns a Literal type as it was given" do
+      type = Literal::Types._Integer(1..6)
+      action_class.result type
+
+      expect(action_class.result_type).to equal(type)
+    end
+
+    it "is nil when the action declares no result" do
+      expect(action_class.result_type).to be_nil
+    end
+
+    it "follows the parent class, whenever the parent declares its result" do
+      child = Class.new(action_class)
+      action_class.result String
+
+      expect(child.result_type).to eq(String)
+    end
+
+    it "is the subclass's own when it declares one, and leaves the parent's" do
+      action_class.result String
+      child = Class.new(action_class) { result Integer }
+
+      expect(child.result_type).to eq(Integer)
+      expect(action_class.result_type).to eq(String)
     end
   end
 

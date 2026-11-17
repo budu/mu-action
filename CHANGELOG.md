@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Added
+- `result_type` class method: the type given to `result`, by the class or by its parent class, or `nil` when neither declares one.
+
 ## [0.4.0] - 2026-11-16
 
 ### Breaking

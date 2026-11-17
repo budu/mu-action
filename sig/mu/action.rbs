@@ -21,6 +21,8 @@ module Mu
       def call: (*untyped, **untyped) -> untyped
       def call!: (*untyped, **untyped) -> untyped
       def result: (untyped type) -> ::Class
+      def result_type: () -> untyped
+      def const_get: (Symbol) -> untyped
       def const_set: (Symbol, ::Class) -> ::Class
       def new: (*untyped, **untyped) -> untyped
     end
